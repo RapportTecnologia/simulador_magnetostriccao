@@ -398,12 +398,18 @@ class AnalyzerApp(QMainWindow):
     def _train_model(self):
         """
         Treina CNN e salva em <base>_<modelo>.h5.
-        Atualiza statusBar em cada passo.
         """
         model_name = self.lst.currentItem().text()
         X, y = self._collect_data(self.train_dir)
+        # Verificação de formato antes de criar o modelo
+        if len(X.shape) != 4:
+            QMessageBox.critical(self, 'Erro de dados', f'Os dados de entrada para a CNN devem ter 4 dimensões (amostras, n_mfcc, T, 1), mas a forma recebida foi {X.shape}. Corrija o pré-processamento.')
+            return
+        if X.shape[-1] != 1:
+            QMessageBox.critical(self, 'Erro de dados', f'O canal final dos dados de entrada deve ser 1 (shape: {X.shape}). Corrija o pré-processamento.')
+            return
         self.statusBar().showMessage('Treinamento: montando arquitetura')
-        inp = Input(shape=X.shape[1:])
+        inp = Input(shape=(X.shape[1], X.shape[2], 1))
         x = Conv2D(16, (3, 3), activation='relu')(inp)
         x = MaxPooling2D((2, 2))(x)
         x = Conv2D(32, (3, 3), activation='relu')(x)
