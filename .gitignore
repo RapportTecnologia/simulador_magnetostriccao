@@ -196,3 +196,5 @@ cython_debug/
 samples_realistas/
 ruidos_externos/
 *.h5
+*.h
+*.tflite

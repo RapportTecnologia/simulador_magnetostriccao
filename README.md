@@ -237,17 +237,60 @@ Para utilizar o sistema completo:
 
 3. **Opcional**: Adicionar gravações reais às pastas train/test correspondentes
 
-3. **Executar o analisador**:
+4. **Executar o analisador**:
    ```bash
    python simulador.py ./samples_realistas
    ```
 
-4. **Treinar um modelo** na interface gráfica
+5. **Treinar um modelo** na interface gráfica
 
-5. **Testar o modelo** com amostras de teste
+6. **Testar o modelo** com amostras de teste
 
-6. **Usar em tempo real** com um microfone para monitoramento contínuo
+7. **Usar em tempo real** com um microfone para monitoramento contínuo
 
 ---
 
-Este projeto foi desenvolvido para auxiliar na detecção e classificação de problemas de magnetostricção em transformadores, fornecendo ferramentas para simulação, treinamento e aplicação em tempo real.
+## Uso de TinyML no STM32
+
+Este projeto oferece um script para converter modelos Keras (.h5) em formatos compatíveis com TinyML para microcontroladores STM32 (TFLite e array C).
+
+### Passos para Converter e Integrar
+
+1. **Converta o modelo .h5 para TFLite e array C:**
+
+   ```bash
+   python h5_to_stm32_tinyml.py caminho/do/modelo.h5
+   # Saídas: modelo.tflite e modelo.h (array C)
+   ```
+   
+   Parâmetros opcionais:
+   - `--tflite`: Caminho de saída do arquivo .tflite
+   - `--c`: Caminho de saída do arquivo .h (array C)
+   - `--var`: Nome da variável C (default: model_tflite)
+
+2. **Projeto Base STM32:**
+   - Um esqueleto de projeto está disponível em `stm32_base/`.
+   - Copie o arquivo `.h` gerado para `stm32_base/Core/Inc/model_tflite.h`.
+   - Siga o guia em `stm32_base/README_STM32_PROJECT.md` para integração no seu projeto STM32.
+
+3. **Integração no Código C:**
+   - Inclua o arquivo `.h` no seu código STM32:
+     ```c
+     #include "model_tflite.h"
+     // Use model_tflite e model_tflite_len
+     ```
+   - Importe e integre a biblioteca TensorFlow Lite Micro conforme instruções no projeto base.
+
+### Dependências para Conversão
+- Python 3.8+
+- tensorflow
+- numpy
+
+Instale com:
+```bash
+pip install tensorflow numpy
+```
+
+---
+
+Este projeto foi desenvolvido para auxiliar na detecção e classificação de problemas de magnetostricção em transformadores, fornecendo ferramentas para simulação, treinamento, aplicação em tempo real e agora integração com microcontroladores STM32 via TinyML.
