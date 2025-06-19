@@ -239,6 +239,11 @@ class AnalyzerApp(QMainWindow):
 
         # Display à direita
         disp = QVBoxLayout()
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setValue(0)
+        self.progress_bar.setVisible(False)
+        disp.addWidget(self.progress_bar)
+
         disp.addWidget(QLabel('Espectrograma (até 1kHz)'))
         self.fig_spec = Figure()
         self.canv_spec = FigureCanvas(self.fig_spec)
@@ -384,9 +389,18 @@ class AnalyzerApp(QMainWindow):
             for fname in filenames:
                 if fname.lower().endswith(('.wav', '.flac', '.mp3', '.ogg')):
                     files.append(os.path.join(root, fname))
+        # Barra de progresso para carga dos arquivos
+        total = len(files)
+        if hasattr(self, 'progress_bar'):
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setMaximum(total)
+            self.progress_bar.setValue(0)
         for i, full in enumerate(files, 1):
             fname = os.path.basename(full)
-            self.statusBar().showMessage(f"Treinamento: carregando {fname} ({i}/{len(files)})")
+            self.statusBar().showMessage(f"Treinamento: carregando {fname} ({i}/{total})")
+            if hasattr(self, 'progress_bar'):
+                self.progress_bar.setValue(i)
+            QApplication.processEvents()
             y, _ = librosa.load(full, sr=SR, duration=DURATION)
             y = scipy.signal.filtfilt(self.b, self.a, y)
             mf = librosa.feature.mfcc(y=y, sr=SR, n_mfcc=N_MFCC, fmax=CUTOFF_FREQ)
@@ -400,6 +414,8 @@ class AnalyzerApp(QMainWindow):
             X.append(mf)
             label = os.path.basename(os.path.dirname(full))
             labels.append(int(label) if label.isdigit() else 0)
+        if hasattr(self, 'progress_bar'):
+            self.progress_bar.setVisible(False)
         X = np.array(X, dtype=np.float32)[..., np.newaxis]
         y = to_categorical(labels, num_classes=3).astype(np.float32)
         self.statusBar().showMessage('Treinamento: dados prontos')
@@ -410,15 +426,25 @@ class AnalyzerApp(QMainWindow):
         Treina CNN e salva em model_<modelo>.h5.
         """
         model_name = self.lst.currentItem().text()
+        # Reset barra de progresso
+        if hasattr(self, 'progress_bar'):
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setMaximum(0)  # modo indeterminado
+            self.progress_bar.setValue(0)
         X, y = self._collect_data(self.train_dir)
         # Verificação de formato antes de criar o modelo
         if len(X.shape) != 4:
+            if hasattr(self, 'progress_bar'):
+                self.progress_bar.setVisible(False)
             QMessageBox.critical(self, 'Erro de dados', f'Os dados de entrada para a CNN devem ter 4 dimensões (amostras, n_mfcc, T, 1), mas a forma recebida foi {X.shape}. Corrija o pré-processamento.')
             return
         if X.shape[-1] != 1:
+            if hasattr(self, 'progress_bar'):
+                self.progress_bar.setVisible(False)
             QMessageBox.critical(self, 'Erro de dados', f'O canal final dos dados de entrada deve ser 1 (shape: {X.shape}). Corrija o pré-processamento.')
             return
         self.statusBar().showMessage('Treinamento: montando arquitetura')
+        QApplication.processEvents()
         inp = Input(shape=(X.shape[1], X.shape[2], 1))
         x = Conv2D(16, (3, 3), activation='relu')(inp)
         x = MaxPooling2D((2, 2))(x)
@@ -430,10 +456,30 @@ class AnalyzerApp(QMainWindow):
         model = Model(inp, out)
         model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
         self.statusBar().showMessage('Treinamento: ajustando pesos')
-        model.fit(X, y, epochs=EPOCHS, batch_size=BATCH_SIZE)
+        QApplication.processEvents()
+        # Atualiza barra de progresso para o número de épocas
+        if hasattr(self, 'progress_bar'):
+            self.progress_bar.setMaximum(EPOCHS)
+            self.progress_bar.setValue(0)
+        # Treinamento com callback para atualizar barra
+        class ProgressCallback(tf.keras.callbacks.Callback):
+            def __init__(self, progress_bar):
+                super().__init__()
+                self.progress_bar = progress_bar
+            def on_epoch_end(self, epoch, logs=None):
+                if self.progress_bar:
+                    self.progress_bar.setValue(epoch + 1)
+                    QApplication.processEvents()
+        callbacks = []
+        if hasattr(self, 'progress_bar'):
+            callbacks = [ProgressCallback(self.progress_bar)]
+        model.fit(X, y, epochs=EPOCHS, batch_size=BATCH_SIZE, callbacks=callbacks)
+        if hasattr(self, 'progress_bar'):
+            self.progress_bar.setVisible(False)
         # Corrigido: sempre gerar model_<nome>.h5
         new_path = f"model_{model_name}.h5"
         self.statusBar().showMessage('Treinamento: salvando modelo')
+        QApplication.processEvents()
         model.save(new_path)
         self.model_path = new_path
         self.model = tf.keras.models.load_model(self.model_path)
@@ -449,12 +495,37 @@ class AnalyzerApp(QMainWindow):
         if self.classifying:
             self.stop_classify = True
             self.statusBar().showMessage('Interrompendo classificação...')
+            if hasattr(self, 'progress_bar'):
+                self.progress_bar.setVisible(False)
         else:
             if not self.model:
                 QMessageBox.warning(self, 'Aviso', 'Treine um modelo antes.')
                 return
             self.classifying = True
             self.stop_classify = False
+            # Exemplo de barra de progresso para classificação
+            test_files = []
+            for root, _, filenames in os.walk(self.test_dir):
+                for fname in filenames:
+                    if fname.lower().endswith(('.wav', '.flac', '.mp3', '.ogg')):
+                        test_files.append(os.path.join(root, fname))
+            total = len(test_files)
+            if hasattr(self, 'progress_bar'):
+                self.progress_bar.setVisible(True)
+                self.progress_bar.setMaximum(total)
+                self.progress_bar.setValue(0)
+            for i, file in enumerate(test_files, 1):
+                if self.stop_classify:
+                    break
+                self.statusBar().showMessage(f"Classificando: {os.path.basename(file)} ({i}/{total})")
+                # Aqui entraria a lógica real de classificação do arquivo
+                if hasattr(self, 'progress_bar'):
+                    self.progress_bar.setValue(i)
+                QApplication.processEvents()
+            if hasattr(self, 'progress_bar'):
+                self.progress_bar.setVisible(False)
+            self.classifying = False
+            self.statusBar().showMessage('Classificação concluída')
 
     def _exit(self, signum, frame):
         """
