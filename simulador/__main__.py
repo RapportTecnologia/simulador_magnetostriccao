@@ -2,7 +2,7 @@ import sys
 import argparse
 import os
 from PyQt5.QtWidgets import QApplication
-from .simulador import AnalyzerApp
+from .analyzer_app import AnalyzerApp
 
 def main(root_dir, model_path='model.h5'):
     """

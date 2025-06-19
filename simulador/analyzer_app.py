@@ -568,6 +568,8 @@ class AnalyzerApp(QMainWindow):
                 if fn.lower().endswith(('.wav', '.flac', '.mp3', '.ogg')):
                     test_files.append(os.path.join(root, fn))
 
+        self.current_files = test_files
+
         # Inicia a thread de classificação
         self.btn_classify.setText('Parar Classificação')
         self.btn_classify.setStyleSheet('background-color: red;')
@@ -611,7 +613,8 @@ class AnalyzerApp(QMainWindow):
         """
         Recebe progresso de arquivo da thread e atualiza UI.
         """
-        self.lbl_file.setText(f'Arquivo: {index}/{total}')
+        file_name = os.path.basename(self.current_files[index-1])
+        self.lbl_file.setText(f'Arquivo: {file_name}')
         self.statusBar().showMessage(f'Classificando: {index}/{total}')
         self.progress_bar.setValue(index)
 
