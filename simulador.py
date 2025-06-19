@@ -32,6 +32,8 @@ Uso:
 import sys
 import os
 import argparse
+import csv
+import datetime
 import signal
 import numpy as np
 import scipy.signal
@@ -445,55 +447,15 @@ class AnalyzerApp(QMainWindow):
                 return
             self.classifying = True
             self.stop_classify = False
-            self.btn_classify.setText('Parar Classificação')
-            self.statusBar().showMessage('Classificação iniciada')
-            self._classify_test()
 
-    def _classify_test(self):
+    def _exit(self, signum, frame):
         """
-        Classifica todos os arquivos de teste encontrados em test_dir.
-        Atualiza gráficos e statusBar para cada arquivo.
+        Trata SIGINT (Ctrl+C) para sair graciosamente.
         """
-        audio_files = []
-        for root, _, files in os.walk(self.test_dir):
-            for fname in files:
-                if fname.lower().endswith(('.wav', '.flac', '.mp3', '.ogg')):
-                    audio_files.append(os.path.join(root, fname))
-        for full in audio_files:
-            if self.stop_classify:
-                break
-            fname = os.path.basename(full)
-            self.statusBar().showMessage(f'Classificando: {fname}')
-            self.lbl_file.setText(f'Arquivo: {fname}')
-            QApplication.processEvents()
-            y, _ = librosa.load(full, sr=SR, duration=DURATION)
-            y = scipy.signal.filtfilt(self.b, self.a, y)
-            self.audio_buffer = [y]
-            self._process()
-            mf = librosa.feature.mfcc(y=y, sr=SR, n_mfcc=N_MFCC, fmax=CUTOFF_FREQ)
-            T = self.model.input_shape[2]
-            if mf.shape[1] >= T:
-                mf = mf[:, :T]
-            else:
-                pad = np.zeros((N_MFCC, T-mf.shape[1]))
-                mf = np.hstack((mf, pad))
-            x = mf[np.newaxis, ..., np.newaxis]
-            pred = self.model.predict(x)
-            cls = int(np.argmax(pred))
-            self.color_box.update_status(cls)
-        self.statusBar().showMessage('Classificação concluída')
-        QMessageBox.information(self, 'Classificação', 'Concluída')
-        self.btn_classify.setText('Iniciar Classificação')
-        self.classifying = False
-
-    def _exit(self, *args):
-        """
-        Finaliza streams e encerra aplicação.
-        """
-        if hasattr(self, 'stream') and self.stream.active:
-            self.stream.stop()
-            self.stream.close()
+        print('Saindo graciosamente...')
+        self.close()
         QApplication.quit()
+        sys.exit(0)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Analisador GUI')
