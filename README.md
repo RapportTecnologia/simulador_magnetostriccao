@@ -158,7 +158,7 @@ O analisador (`simulador.py`) é uma aplicação gráfica para:
 python simulador.py <diretório_raiz>
 
 # Exemplo com modelo pré-treinado
-python simulador.py ./samples_realistas --model modelo_cnn.h5
+python simulador.py ./samples_realistas --model model_CNN.h5
 
 # O diretório_raiz deve conter subpastas:
 #   train/0, train/1, train/2 (para treinamento)
@@ -216,7 +216,7 @@ O sistema possui uma interface flexível para treino e teste de diferentes arqui
 - **RandomForest** (Floresta Aleatória)
 - **XGBoost** (Extreme Gradient Boosting)
 
-> **Nota:** No momento, apenas a arquitetura CNN está implementada e treinável diretamente pelo sistema. As demais arquiteturas estão previstas na interface para futura expansão e comparação de desempenho.
+> **Nota:** No momento, apenas a arquitetura CNN está implementada e pode ser treinada diretamente pela interface. As demais (RNN, SVM, RandomForest, XGBoost) estão presentes para fins de comparação futura e seleção visual, mas ainda não estão disponíveis para treino.
 
 ### CNN (Rede Neural Convolucional)
 A CNN é a arquitetura padrão utilizada para classificação dos MFCCs extraídos dos sinais de áudio. Ela é composta pelas seguintes camadas:
@@ -294,6 +294,8 @@ Para utilizar o sistema completo:
    ```
 
 5. **Treinar um modelo** na interface gráfica
+   - Ao trocar o modelo na lista, os botões de análise e classificação serão desativados automaticamente. É necessário treinar novamente para habilitá-los.
+   - O arquivo salvo terá sempre o formato `model_<nome_modelo>.h5` (ex: `model_CNN.h5`).
 
 6. **Testar o modelo** com amostras de teste
 

@@ -159,6 +159,13 @@ class AnalyzerApp(QMainWindow):
         self._init_timer()
         signal.signal(signal.SIGINT, self._exit)
 
+    def _on_model_changed(self, idx):
+        """Desabilita botões ao trocar modelo."""
+        self.btn_analysis.setEnabled(False)
+        self.btn_classify.setEnabled(False)
+        self.model = None
+        self.model_path = ''
+
     def _init_ui(self):
         """Monta UI com PyQt5 widgets e layouts."""
         self.setWindowTitle('Analisador de Magnetostricção')
@@ -226,6 +233,7 @@ class AnalyzerApp(QMainWindow):
         for m in ['CNN', 'RNN', 'SVM', 'RandomForest', 'XGBoost']:
             self.lst.addItem(m)
         self.lst.setCurrentRow(0)
+        self.lst.currentRowChanged.connect(self._on_model_changed)
         ctrl.addWidget(self.lst)
         ctrl.addStretch()
 
@@ -399,7 +407,7 @@ class AnalyzerApp(QMainWindow):
 
     def _train_model(self):
         """
-        Treina CNN e salva em <base>_<modelo>.h5.
+        Treina CNN e salva em model_<modelo>.h5.
         """
         model_name = self.lst.currentItem().text()
         X, y = self._collect_data(self.train_dir)
@@ -423,8 +431,8 @@ class AnalyzerApp(QMainWindow):
         model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
         self.statusBar().showMessage('Treinamento: ajustando pesos')
         model.fit(X, y, epochs=EPOCHS, batch_size=BATCH_SIZE)
-        base, ext = os.path.splitext(self.model_path)
-        new_path = f"{base}_{model_name}{ext}"
+        # Corrigido: sempre gerar model_<nome>.h5
+        new_path = f"model_{model_name}.h5"
         self.statusBar().showMessage('Treinamento: salvando modelo')
         model.save(new_path)
         self.model_path = new_path
