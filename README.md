@@ -51,6 +51,7 @@ As dependências principais incluem:
 - **PyQt5**: Interface gráfica
 - **matplotlib**: Visualização de dados
 - **tensorflow**: Aprendizado de máquina para classificação
+- **tqdm**: Barra de progresso para geração de amostras
 
 ## Estrutura do Projeto
 
@@ -75,7 +76,9 @@ simulador/
 
 ## Geração de Amostras
 
-O script `gerador_amostras_magnetostriccao.py` cria amostras de áudio sintéticas que simulam três estados de magnetostricção:
+O script `gerador_amostras_magnetostriccao.py` cria amostras de áudio sintéticas que simulam três estados de magnetostricção. 
+
+A partir da versão mais recente, o processo de geração exibe uma **barra de progresso** no terminal, mostrando quantos arquivos de treino e teste já foram criados, facilitando o acompanhamento da execução.
 
 - **Classe 0**: Estado normal (padrão harmônico equilibrado)
 - **Classe 1**: Estado intermediário (alterações nas harmonicas pares)
