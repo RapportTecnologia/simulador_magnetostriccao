@@ -514,11 +514,41 @@ class AnalyzerApp(QMainWindow):
                 self.progress_bar.setVisible(True)
                 self.progress_bar.setMaximum(total)
                 self.progress_bar.setValue(0)
+            import csv
+            import datetime
+            relatorio_path = os.path.join(self.test_dir, 'relatorio_classificacao.csv')
+            cabecalho = ['arquivo', 'classe_predita', 'probabilidade', 'data_hora']
+            # Se o arquivo não existe, cria com cabeçalho
+            if not os.path.exists(relatorio_path):
+                with open(relatorio_path, 'w', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(cabecalho)
+
             for i, file in enumerate(test_files, 1):
                 if self.stop_classify:
                     break
                 self.statusBar().showMessage(f"Classificando: {os.path.basename(file)} ({i}/{total})")
-                # Aqui entraria a lógica real de classificação do arquivo
+
+                # Lógica real de classificação
+                y, _ = librosa.load(file, sr=SR, duration=DURATION)
+                y = scipy.signal.filtfilt(self.b, self.a, y)
+                mfccs = librosa.feature.mfcc(y=y, sr=SR, n_mfcc=N_MFCC, fmax=CUTOFF_FREQ)
+                T = self.model.input_shape[2]
+                if mfccs.shape[1] >= T:
+                    mfccs = mfccs[:, :T]
+                else:
+                    pad = np.zeros((N_MFCC, T - mfccs.shape[1]))
+                    mfccs = np.hstack((mfccs, pad))
+                x = mfccs[np.newaxis, ..., np.newaxis]
+                pred = self.model.predict(x)
+                cls = int(np.argmax(pred))
+                prob = float(np.max(pred))
+                datahora = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                # Salva resultado no relatório
+                with open(relatorio_path, 'a', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow([os.path.basename(file), cls, prob, datahora])
+
                 if hasattr(self, 'progress_bar'):
                     self.progress_bar.setValue(i)
                 QApplication.processEvents()
