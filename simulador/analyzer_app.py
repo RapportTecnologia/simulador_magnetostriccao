@@ -176,14 +176,17 @@ class AnalyzerApp(QMainWindow):
 
         # Botão para iniciar/parar análise de arquivos de teste
         self.btn_analysis = QPushButton('Iniciar Análise')
+        self.btn_analysis.setStyleSheet('background-color: green;')
         ctrl_layout.addWidget(self.btn_analysis)
 
         # Botão para treinar o modelo
         self.btn_train = QPushButton('Treinar Modelo')
+        self.btn_train.setStyleSheet('background-color: green;')
         ctrl_layout.addWidget(self.btn_train)
 
         # Botão para iniciar classificação de testes
         self.btn_classify = QPushButton('Iniciar Classificação')
+        self.btn_classify.setStyleSheet('background-color: green;')
         ctrl_layout.addWidget(self.btn_classify)
 
         # Lista de algoritmos de classificação disponíveis
@@ -290,6 +293,7 @@ class AnalyzerApp(QMainWindow):
             self.thread.stop()
             self.thread.wait()
             self.btn_analysis.setText('Iniciar Análise')
+            self.btn_analysis.setStyleSheet('background-color: green;')
             self.statusBar().showMessage('Análise de arquivos parada')
             return
 
@@ -317,6 +321,7 @@ class AnalyzerApp(QMainWindow):
 
         # Atualiza texto do botão e status bar
         self.btn_analysis.setText('Parar Análise')
+        self.btn_analysis.setStyleSheet('background-color: red;')
         self.statusBar().showMessage('Análise de arquivos iniciada')
 
         # Cria e configura a FileAnalysisThread
