@@ -5,3 +5,4 @@ sounddevice
 PyQt5
 matplotlib
 tensorflow
+tqdm
