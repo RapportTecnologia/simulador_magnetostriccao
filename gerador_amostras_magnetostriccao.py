@@ -18,25 +18,28 @@ DIR_IRS = "./impulse_responses"
 DIR_EQ_CURVES = "./eq_curvas_microfone"
 
 def gerar_sinal_base(label):
-    base_freq = 60
+    base_freq = 60 + np.random.uniform(-2, 2)  # Pequena variação de frequência fundamental
     harmonicas = list(range(2, 16))
     sinal = np.zeros_like(t)
-
-    if label == 0:
-        for h in harmonicas:
-            sinal += (1 / h) * np.sin(2 * np.pi * base_freq * h * t)
-    elif label == 1:
-        for h in harmonicas:
-            ganho = 1 / (h * (1.2 if h % 2 == 0 else 0.8))
-            sinal += ganho * np.sin(2 * np.pi * base_freq * h * t)
+    # Sorteia fase e amplitude aleatória para cada harmônico
+    for h in harmonicas:
+        amp = np.random.uniform(0.5, 1.2) / h
+        phase = np.random.uniform(0, 2 * np.pi)
+        freq = base_freq * h + np.random.uniform(-0.5, 0.5)  # Variação por harmônico
+        if label == 0:
+            sinal += amp * np.sin(2 * np.pi * freq * t + phase)
+        elif label == 1:
+            ganho = amp * (np.random.uniform(0.8, 1.3) if h % 2 == 0 else np.random.uniform(0.6, 1.1))
+            sinal += ganho * np.sin(2 * np.pi * freq * t + phase)
+        elif label == 2:
+            ganho = amp * (np.random.uniform(0.4, 0.9) if h % 2 == 1 else np.random.uniform(1.0, 1.6))
+            sinal += ganho * np.sin(2 * np.pi * freq * t + phase)
+    # Ruído de fundo leve
+    if label == 1:
         sinal += 0.01 * np.random.randn(*t.shape)
     elif label == 2:
-        for h in harmonicas:
-            ganho = 1 / (h * (0.6 if h % 2 == 1 else 1.5))
-            sinal += ganho * np.sin(2 * np.pi * base_freq * h * t)
         sinal += 0.03 * np.random.randn(*t.shape)
-
-    sinal = sinal / np.max(np.abs(sinal))
+    sinal = sinal / np.max(np.abs(sinal) + 1e-6)
     sinal += 0.005 * np.random.randn(*t.shape)
     return sinal
 
@@ -151,26 +154,29 @@ def gerar_amostras(destino, total, proporcao_treino, proporcao_ruido=0.3, nivel_
 # Exemplo: para 20 sinais por label e todos os ruídos em ./ruidos_externos
 # O diretório de saída será ./samples_fatorial
 def gerar_sinal_base_com_duracao(n_amostras, label=None):
-    base_freq = 60
+    base_freq = 60 + np.random.uniform(-2, 2)
     harmonicas = list(range(2, 16))
     t_local = np.linspace(0, n_amostras / fs, n_amostras, endpoint=False)
     if label is None:
         label = random.choice([0, 1, 2])
     sinal = np.zeros_like(t_local)
-    if label == 0:
-        for h in harmonicas:
-            sinal += (1 / h) * np.sin(2 * np.pi * base_freq * h * t_local)
-    elif label == 1:
-        for h in harmonicas:
-            ganho = 1 / (h * (1.2 if h % 2 == 0 else 0.8))
-            sinal += ganho * np.sin(2 * np.pi * base_freq * h * t_local)
+    for h in harmonicas:
+        amp = np.random.uniform(0.5, 1.2) / h
+        phase = np.random.uniform(0, 2 * np.pi)
+        freq = base_freq * h + np.random.uniform(-0.5, 0.5)
+        if label == 0:
+            sinal += amp * np.sin(2 * np.pi * freq * t_local + phase)
+        elif label == 1:
+            ganho = amp * (np.random.uniform(0.8, 1.3) if h % 2 == 0 else np.random.uniform(0.6, 1.1))
+            sinal += ganho * np.sin(2 * np.pi * freq * t_local + phase)
+        elif label == 2:
+            ganho = amp * (np.random.uniform(0.4, 0.9) if h % 2 == 1 else np.random.uniform(1.0, 1.6))
+            sinal += ganho * np.sin(2 * np.pi * freq * t_local + phase)
+    if label == 1:
         sinal += 0.01 * np.random.randn(*t_local.shape)
     elif label == 2:
-        for h in harmonicas:
-            ganho = 1 / (h * (0.6 if h % 2 == 1 else 1.5))
-            sinal += ganho * np.sin(2 * np.pi * base_freq * h * t_local)
         sinal += 0.03 * np.random.randn(*t_local.shape)
-    sinal = sinal / np.max(np.abs(sinal))
+    sinal = sinal / np.max(np.abs(sinal) + 1e-6)
     sinal += 0.005 * np.random.randn(*t_local.shape)
     return sinal
 
