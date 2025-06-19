@@ -92,20 +92,46 @@ O gerador usa os seguintes processos para criar amostras realistas:
 
 ### Como Usar o Gerador
 
+O script `gerador_amostras_magnetostriccao.py` pode ser executado diretamente pela linha de comando e aceita diversos parâmetros para personalização:
+
+#### Principais argumentos
+
+- `--fatorial`           : Gera todas as combinações possíveis entre sinais e todos os ruídos externos (modo fatorial)
+- `--destino`            : Diretório de saída das amostras (default: ./samples_realistas)
+- `--n_sinais`           : Número de sinais base por classe (no modo fatorial, default: 20)
+- `--total`              : Número total de amostras (modo normal, default: 200)
+- `--proporcao_treino`   : Proporção das amostras para treino (default: 0.3)
+- `--proporcao_ruido`    : Proporção das amostras com ruído externo (default: 0.3)
+- `--nivel-ruido` ou `-n`: Nível de amplificação do ruído externo (default: 1.5 = +50%)
+
+#### Exemplos de uso
+
+**Modo normal (aleatório, com proporção de ruído):**
+
 ```bash
-# Modificar parâmetros no final do arquivo se necessário
-python gerador_amostras_magnetostriccao.py
+python gerador_amostras_magnetostriccao.py --total 100 --proporcao_ruido 0.5 --nivel-ruido 2.0 --destino ./samples_realistas
 ```
 
-O código final contém a configuração padrão:
-```python
-gerar_amostras("./samples_realistas", total=200, proporcao_treino=0.3, proporcao_ruido=0.3)
+**Modo fatorial (todas as combinações entre cada sinal e cada ruído externo):**
+
+```bash
+python gerador_amostras_magnetostriccao.py --fatorial --n_sinais 20 --nivel-ruido 1.5 --destino ./samples_fatorial
 ```
 
-- **destino**: Diretório onde serão criadas as pastas `train` e `test`
-- **total**: Número total de amostras a serem geradas
-- **proporcao_treino**: Proporção das amostras destinadas ao treino (0.3 = 30%)
-- **proporcao_ruido**: Proporção das amostras que terão ruído externo aplicado (0.3 = 30%)
+#### Observações importantes
+
+- **Formatos aceitos para ruído externo:** `.wav` e `.mp3` (coloque os arquivos em `ruidos_externos/`)
+- **Duração das amostras:** Quando ruído externo é utilizado, a duração da amostra gerada será igual à do arquivo de ruído externo correspondente.
+- **Amplificação do ruído:** O parâmetro `--nivel-ruido` multiplica o volume do ruído externo (1.0 = original, 2.0 = dobro, 1.5 = +50%).
+- **Saída:** O script cria pastas `train` e `test` no diretório de destino, cada uma com subpastas para as classes 0, 1 e 2.
+
+#### Ajuda
+
+Para ver todos os parâmetros disponíveis:
+
+```bash
+python gerador_amostras_magnetostriccao.py --help
+```
 
 ### Personalização da Geração
 
