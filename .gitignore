@@ -198,3 +198,4 @@ ruidos_externos/
 *.h5
 *.h
 *.tflite
+.vscode/
