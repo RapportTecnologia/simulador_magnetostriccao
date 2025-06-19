@@ -137,7 +137,7 @@ python gerador_amostras_magnetostriccao.py --help
 
 Para personalizar a geração de amostras:
 
-1. **Ruídos Externos**: Adicione arquivos de áudio WAV em `ruidos_externos/`
+1. **Ruídos Externos**: Adicione arquivos de áudio WAV em `ruidos_externos/` (crie o diretório manualmente se não existir: `mkdir ruidos_externos`)
 2. **Respostas Impulsivas**: Adicione IRs de ambientes em `impulse_responses/`
 3. **Curvas de EQ**: Adicione perfis de equalização em `eq_curvas_microfone/`
 
@@ -205,9 +205,18 @@ python simulador.py ./samples_realistas --model modelo_cnn.h5
 
 ## Redes Neurais Utilizadas
 
-O sistema utiliza uma Rede Neural Convolucional (CNN) para classificação dos sinais de áudio processados.
+O sistema possui uma interface flexível para treino e teste de diferentes arquiteturas de redes neurais para classificação dos sinais de áudio. As opções disponíveis na interface são:
 
-### Arquitetura da CNN
+- **CNN** (Rede Neural Convolucional)
+- **RNN** (Rede Neural Recorrente)
+- **SVM** (Support Vector Machine)
+- **RandomForest** (Floresta Aleatória)
+- **XGBoost** (Extreme Gradient Boosting)
+
+> **Nota:** No momento, apenas a arquitetura CNN está implementada e treinável diretamente pelo sistema. As demais arquiteturas estão previstas na interface para futura expansão e comparação de desempenho.
+
+### CNN (Rede Neural Convolucional)
+A CNN é a arquitetura padrão utilizada para classificação dos MFCCs extraídos dos sinais de áudio. Ela é composta pelas seguintes camadas:
 
 ```
 Entrada: MFCCs [n_mfcc=40, frames]
@@ -226,6 +235,19 @@ Densa (64 neurônios, ReLU)
 ↓
 Saída (3 classes, Softmax)
 ```
+
+- **Entrada:** MFCCs extraídos do áudio (formato imagem 2D)
+- **Conv2D/MaxPooling:** Capturam padrões espectrais e temporais relevantes
+- **Flatten/Dense:** Realizam a classificação final em 3 classes
+
+### Outras Arquiteturas Previstas
+
+- **RNN:** Indicada para sequências temporais, pode capturar dependências de longo prazo nos sinais.
+- **SVM:** Classificador tradicional eficiente para problemas lineares e não-lineares com poucos dados.
+- **RandomForest:** Método de ensemble baseado em árvores de decisão, robusto a ruídos e sobreajuste.
+- **XGBoost:** Algoritmo de boosting de árvores, eficiente para grandes conjuntos de dados tabulares.
+
+Essas opções estão presentes na interface para facilitar testes comparativos e futuras expansões do sistema.
 
 ### Características e Pré-processamento
 
