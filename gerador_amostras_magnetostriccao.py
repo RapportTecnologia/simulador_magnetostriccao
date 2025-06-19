@@ -17,7 +17,7 @@ DIR_RUIDOS = "./ruidos_externos"
 DIR_IRS = "./impulse_responses"
 DIR_EQ_CURVES = "./eq_curvas_microfone"
 
-def gerar_sinal_base(label):
+def gerar_sinal_base(label, sem_ruido=False):
     base_freq = 60 + np.random.uniform(-2, 2)  # Pequena variação de frequência fundamental
     harmonicas = list(range(2, 16))
     sinal = np.zeros_like(t)
@@ -34,13 +34,16 @@ def gerar_sinal_base(label):
         elif label == 2:
             ganho = amp * (np.random.uniform(0.4, 0.9) if h % 2 == 1 else np.random.uniform(1.0, 1.6))
             sinal += ganho * np.sin(2 * np.pi * freq * t + phase)
-    # Ruído de fundo leve
-    if label == 1:
-        sinal += 0.01 * np.random.randn(*t.shape)
-    elif label == 2:
-        sinal += 0.03 * np.random.randn(*t.shape)
-    sinal = sinal / np.max(np.abs(sinal) + 1e-6)
-    sinal += 0.005 * np.random.randn(*t.shape)
+    if not sem_ruido:
+        # Ruído de fundo leve
+        if label == 1:
+            sinal += 0.01 * np.random.randn(*t.shape)
+        elif label == 2:
+            sinal += 0.03 * np.random.randn(*t.shape)
+        sinal = sinal / np.max(np.abs(sinal) + 1e-6)
+        sinal += 0.005 * np.random.randn(*t.shape)
+    else:
+        sinal = sinal / np.max(np.abs(sinal) + 1e-6)
     return sinal
 
 def carregar_audio_pydub(path):
@@ -81,6 +84,8 @@ def salvar_wav(sinal, path):
     wav_data = np.int16(sinal / np.max(np.abs(sinal)) * 32767)
     sf.write(path, wav_data, fs)
 
+from tqdm import tqdm
+
 def gerar_amostras_fatorial(destino, n_sinais=20, nivel_ruido=1.5):
     """
     Para cada label (0, 1, 2), gera n_sinais de magnetostricção e combina cada um com TODOS os ruídos externos,
@@ -98,18 +103,21 @@ def gerar_amostras_fatorial(destino, n_sinais=20, nivel_ruido=1.5):
         return
 
     idx = 0
-    for label in [0, 1, 2]:
-        for i in range(n_sinais):
-            for ruido_path in arquivos_ruido:
-                ruido, dur = carregar_audio_pydub(ruido_path)
-                n_amostras = len(ruido)
-                sinal_base = gerar_sinal_base_com_duracao(n_amostras)
-                sinal = sinal_base + 0.2 * nivel_ruido * ruido
-                sinal = sinal / np.max(np.abs(sinal))
-                ruido_nome = os.path.splitext(os.path.basename(ruido_path))[0]
-                nome = f"sinal_{idx:05d}_label{label}_{i:02d}_{ruido_nome}.wav"
-                salvar_wav(sinal, os.path.join(teste_dir, str(label), nome))
-                idx += 1
+    total = 3 * n_sinais * len(arquivos_ruido)
+    with tqdm(total=total, desc="Gerando amostras fatorial (test)") as pbar:
+        for label in [0, 1, 2]:
+            for i in range(n_sinais):
+                for ruido_path in arquivos_ruido:
+                    ruido, dur = carregar_audio_pydub(ruido_path)
+                    n_amostras = len(ruido)
+                    sinal_base = gerar_sinal_base_com_duracao(n_amostras)
+                    sinal = sinal_base + 0.2 * nivel_ruido * ruido
+                    sinal = sinal / np.max(np.abs(sinal))
+                    ruido_nome = os.path.splitext(os.path.basename(ruido_path))[0]
+                    nome = f"sinal_{idx:05d}_label{label}_{i:02d}_{ruido_nome}.wav"
+                    salvar_wav(sinal, os.path.join(teste_dir, str(label), nome))
+                    idx += 1
+                    pbar.update(1)
     print(f"Foram geradas {idx} amostras combinando sinais e ruídos externos.")
 
 # Função original mantida para compatibilidade e geração padrão
@@ -123,32 +131,39 @@ def gerar_amostras(destino, total, proporcao_treino, proporcao_ruido=0.3, nivel_
 
     num_treino = int(total * proporcao_treino)
 
-    for i in range(total):
-        label = random.choice([0, 1, 2])
-        sinal = gerar_sinal_base(label)
-        ruido_nome = "sem_ruido"
-
-        if i >= num_treino and random.random() < proporcao_ruido:
-            arquivos_ruido = glob(os.path.join(DIR_RUIDOS, "*.wav")) + glob(os.path.join(DIR_RUIDOS, "*.mp3"))
-            if arquivos_ruido:
-                arquivo = random.choice(arquivos_ruido)
-                ruido, dur = carregar_audio_pydub(arquivo)
-                n_amostras = len(ruido)
-                sinal_base = gerar_sinal_base_com_duracao(n_amostras)
-                sinal = sinal_base + 0.2 * nivel_ruido * ruido
-                ruido_nome = os.path.splitext(os.path.basename(arquivo))[0]
+    with tqdm(total=total, desc="Gerando amostras") as pbar:
+        for i in range(total):
+            label = random.choice([0, 1, 2])
+            # Amostras de treino SEM ruído, amostras de teste com ruído
+            if i < num_treino:
+                sinal = gerar_sinal_base(label, sem_ruido=True)
+                ruido_nome = "sem_ruido"
             else:
                 sinal = gerar_sinal_base(label)
                 ruido_nome = "sem_ruido"
-            if random.random() < 0.5:
-                sinal = aplicar_convolucao_IR(sinal)
-                sinal = aplicar_equalizacao(sinal)
 
-        sinal = sinal / np.max(np.abs(sinal))
+            if i >= num_treino and random.random() < proporcao_ruido:
+                arquivos_ruido = glob(os.path.join(DIR_RUIDOS, "*.wav")) + glob(os.path.join(DIR_RUIDOS, "*.mp3"))
+                if arquivos_ruido:
+                    arquivo = random.choice(arquivos_ruido)
+                    ruido, dur = carregar_audio_pydub(arquivo)
+                    n_amostras = len(ruido)
+                    sinal_base = gerar_sinal_base_com_duracao(n_amostras)
+                    sinal = sinal_base + 0.2 * nivel_ruido * ruido
+                    ruido_nome = os.path.splitext(os.path.basename(arquivo))[0]
+                else:
+                    sinal = gerar_sinal_base(label)
+                    ruido_nome = "sem_ruido"
+                if random.random() < 0.5:
+                    sinal = aplicar_convolucao_IR(sinal)
+                    sinal = aplicar_equalizacao(sinal)
 
-        nome = f"sinal_{i:04d}_label{label}_{ruido_nome}.wav"
-        destino_final = treino_dir if i < num_treino else teste_dir
-        salvar_wav(sinal, os.path.join(destino_final, str(label), nome))
+            sinal = sinal / np.max(np.abs(sinal))
+
+            nome = f"sinal_{i:04d}_label{label}_{ruido_nome}.wav"
+            destino_final = treino_dir if i < num_treino else teste_dir
+            salvar_wav(sinal, os.path.join(destino_final, str(label), nome))
+            pbar.update(1)
 
 # Geração de amostras fatorial: cada sinal com cada ruído externo
 # Exemplo: para 20 sinais por label e todos os ruídos em ./ruidos_externos
