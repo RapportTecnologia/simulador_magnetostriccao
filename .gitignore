@@ -199,3 +199,6 @@ ruidos_externos/
 *.h
 *.tflite
 .vscode/
+*.csv
+
+gpu_files/
