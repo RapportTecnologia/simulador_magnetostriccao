@@ -13,10 +13,10 @@ Antes de partir para a próxima versão fazer uma tag no git indicando a versão
 ## Versão 1.0
 
 - [X] Ajustar o layout de cores dos botões mantendo padronizado
+- [ ] Criar arquivo TUTORIAL.md com informações didáticas sobre o modelo escolhido, cnn. Explicar porque os demais modelos não funciona, seja minucioso e didático nas explicações.
 - [ ] Adicionar chave de comando para que já inicialize a análise de arquivos de teste, sendo que neste caso será obrigatório que o arquivo de modelo já exista e seja informado em conjunto
 - [ ] Adicionar chave de comando para que já inicialize a classificação de arquivos de teste, sendo que neste caso será obrigatório que o arquivo de modelo já exista e seja informado em conjunto
 - [ ] Adicionar chave de comando para que já inicialize a treinamento, mas neste caso se for informado o nome do aquivo de modelo salva sobre ele e se não existir cria.
-- [ ] Criar arquivo TUTORIAL.md com informações didáticas sobre o modelo escolhido, cnn. Explicar porque os demais modelos não funciona, seja minucioso nas explicações.
 
 ## Versão 2.0
 
@@ -35,3 +35,7 @@ Antes de partir para a próxima versão fazer uma tag no git indicando a versão
 - [ ] Adicionar um menu que permite escolher o modelo a ser usado e em qual diretório está
 - [ ] Adicionar um menu que permite escolher onde será gravado o relatório
 
+## Versão 4.0
+
+- [ ] Permitir conexão via restfull, obedecendo o padrão da API da OpenAI, para receber arquivos de áudio e retornar a classificação.
+- [ ] 
