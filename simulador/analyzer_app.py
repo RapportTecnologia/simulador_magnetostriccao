@@ -286,7 +286,7 @@ class AnalyzerApp(QMainWindow):
 
     def _toggle_analysis(self):
         """
-        Callback do botão de análise: inicia ou para a FileAnalysisThread.
+        Callback do botão de análise: inicia ou para a FileAnalysisThread em streaming ao vivo.
         """
         # Se já existe e está rodando, para a thread
         if self.thread is not None and self.thread.isRunning():
@@ -294,7 +294,7 @@ class AnalyzerApp(QMainWindow):
             self.thread.wait()
             self.btn_analysis.setText('Iniciar Análise')
             self.btn_analysis.setStyleSheet('background-color: green;')
-            self.statusBar().showMessage('Análise de arquivos parada')
+            self.statusBar().showMessage('Análise de streaming parada')
             return
 
         # Se não há modelo, avisa e retorna
@@ -302,44 +302,26 @@ class AnalyzerApp(QMainWindow):
             QMessageBox.warning(self, 'Aviso', 'Treine ou carregue um modelo primeiro.')
             return
 
-        # Lista todos os arquivos de teste válidos
-        test_files = []
-        for root, _, files in os.walk(self.test_dir):
-            for filename in files:
-                if filename.lower().endswith(('.wav', '.flac', '.mp3', '.ogg')):
-                    test_files.append(os.path.join(root, filename))
-
-        # Se não encontrou nenhum arquivo, avisa e retorna
-        if not test_files:
-            QMessageBox.warning(self, 'Aviso', 'Nenhum arquivo de teste encontrado.')
-            return
-
-        # Prepara barra de progresso
-        self.progress_bar.setVisible(True)
-        self.progress_bar.setMaximum(len(test_files))
-        self.progress_bar.setValue(0)
-
         # Atualiza texto do botão e status bar
         self.btn_analysis.setText('Parar Análise')
         self.btn_analysis.setStyleSheet('background-color: red;')
-        self.statusBar().showMessage('Análise de arquivos iniciada')
+        self.statusBar().showMessage('Análise de streaming iniciada')
 
-        # Cria e configura a FileAnalysisThread
+        # Cria e configura a FileAnalysisThread para áudio ao vivo
         self.thread = FileAnalysisThread(
-            test_files,
             self.b,
             self.a,
             SR,
-            DURATION
+            DURATION,
+            self.model,
+            self.model.input_shape[2]
         )
 
         # Conecta sinais para atualizar UI
-        self.thread.chunk_ready.connect(self._update_progress)
         self.thread.spec_ready.connect(self._update_spectrogram)
         self.thread.mel_ready.connect(self._update_mel_bands)
         self.thread.fft_ready.connect(self._update_fft)
         self.thread.class_ready.connect(self.color_box.update_status)
-        self.thread.finished.connect(lambda: self.progress_bar.setVisible(False))
 
         # Inicia thread
         self.thread.start()

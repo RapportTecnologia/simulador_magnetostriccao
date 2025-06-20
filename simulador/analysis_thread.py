@@ -4,16 +4,20 @@ import time
 import numpy as np
 import scipy.signal
 import librosa
+import sounddevice as sd
 
 from PyQt5.QtCore import QThread, pyqtSignal
+
+# Constants duplicated from main application for analysis
+CUTOFF_FREQ = 1000
+N_MFCC = 40
 
 class FileAnalysisThread(QThread):
     """
     Thread dedicado para processar arquivos de áudio de teste sem bloquear a GUI.
     Emite sinais com dados já processados: espectrograma, Mel bands, FFT e classificação.
     """
-    # Sinal para progresso de arquivo: índice_atual, total_de_arquivos
-    chunk_ready = pyqtSignal(int, int)
+    # Thread de análise em tempo real não usa progresso de arquivos
 
     # Sinal para espectrograma pronto: frequências, matriz em dB
     spec_ready = pyqtSignal(np.ndarray, np.ndarray)
@@ -27,18 +31,11 @@ class FileAnalysisThread(QThread):
     # Sinal para classe prevista: código_da_classe
     class_ready = pyqtSignal(int)
 
-    def __init__(
-        self,
-        file_list,
-        b,
-        a,
-        sr,
-        duration
-    ):
+    def __init__(self, b, a, sr, duration, model, max_time):
         super().__init__()
 
         # Lista de caminhos para arquivos de teste
-        self.files = file_list
+        # Não armazena lista de arquivos, usa entrada de áudio ao vivo
 
         # Coeficientes do filtro passa-baixo (Butterworth)
         self.b = b
@@ -53,116 +50,53 @@ class FileAnalysisThread(QThread):
         # Flag para controle de execução
         self._running = True
 
+        # Modelo e tempo máximo de quadros
+        self.model = model
+        self.max_time = max_time
+
     def run(self):
         """
-        Método principal executado quando a thread é iniciada.
-        Processa cada arquivo em sequência e emite sinais.
+        Método principal: monitora entrada de áudio e emite sinais em tempo real.
         """
-        # Número total de arquivos a processar
-        total_files = len(self.files)
-
-        # Itera sobre cada arquivo
-        for index, file_path in enumerate(self.files, start=1):
-            # Verifica se deve interromper
-            if not self._running:
-                break
-
-            # Emite sinal de progresso
-            self.chunk_ready.emit(index, total_files)
-
-            # Carrega o áudio (limitado a DURATION segundos)
-            audio, _ = librosa.load(
-                file_path,
-                sr=self.sr,
-                duration=self.duration
-            )
+        while self._running:
+            # Grava áudio
+            audio = sd.rec(int(self.duration * self.sr), samplerate=self.sr, channels=1, dtype='float32')
+            sd.wait()
+            audio = audio.flatten()
 
             # Aplica filtro passa-baixo Butterworth
-            filtered = scipy.signal.filtfilt(
-                self.b,
-                self.a,
-                audio
-            )
+            filtered = scipy.signal.filtfilt(self.b, self.a, audio)
 
-            # ------------------------------------------------
             # 1) Espectrograma
-            # ------------------------------------------------
-            # Calcula STFT
             S = librosa.stft(filtered)
-
-            # Frequências correspondentes
             freqs = librosa.fft_frequencies(sr=self.sr)
-
-            # Máscara para frequências até CUTOFF_FREQ
             mask = freqs <= CUTOFF_FREQ
-
-            # Converte amplitudes para dB
             S_db = librosa.amplitude_to_db(np.abs(S[mask, :]))
-
-            # Emite sinal com espectrograma pronto
             self.spec_ready.emit(freqs[mask], S_db)
 
-            # ------------------------------------------------
             # 2) Mel Spectrogram
-            # ------------------------------------------------
-            # Calcula mel spectrogram
-            M = librosa.feature.melspectrogram(
-                y=filtered,
-                sr=self.sr,
-                fmax=CUTOFF_FREQ
-            )
-
-            # Média em dB por banda
+            M = librosa.feature.melspectrogram(y=filtered, sr=self.sr, fmax=CUTOFF_FREQ)
             mel_db = librosa.power_to_db(M).mean(axis=1)
-
-            # Emite sinal com Mel bands pronto
             self.mel_ready.emit(mel_db)
 
-            # ------------------------------------------------
             # 3) FFT
-            # ------------------------------------------------
-            # Calcula FFT
             F = np.abs(np.fft.rfft(filtered))
-
-            # Frequências da FFT
             freqs_fft = np.fft.rfftfreq(len(filtered), 1 / self.sr)
-
-            # Máscara para frequências até CUTOFF_FREQ
             mask_fft = freqs_fft <= CUTOFF_FREQ
-            
-            # Emite sinal com FFT pronta
             self.fft_ready.emit(freqs_fft[mask_fft], F[mask_fft])
-            
-            # ------------------------------------------------
-            # 4) Classificação via modelo externo
-            # ------------------------------------------------
-            # Extrai MFCCs
-            mfccs = librosa.feature.mfcc(
-                y=filtered,
-                sr=self.sr,
-                n_mfcc=N_MFCC,
-                fmax=CUTOFF_FREQ
-            )
 
-            # Ajusta dimensão temporal para o modelo
-            max_time = self.model_input_frames
-            if mfccs.shape[1] >= max_time:
-                mfccs = mfccs[:, :max_time]
+            # 4) Classificação
+            mfccs = librosa.feature.mfcc(y=filtered, sr=self.sr, n_mfcc=N_MFCC, fmax=CUTOFF_FREQ)
+            if mfccs.shape[1] >= self.max_time:
+                mfccs = mfccs[:, :self.max_time]
             else:
-                padding = np.zeros((N_MFCC, max_time - mfccs.shape[1]))
-                mfccs = np.hstack((mfccs, padding))
-
-            # Formato para previsão: (1, n_mfcc, T, 1)
+                pad = np.zeros((N_MFCC, self.max_time - mfccs.shape[1]))
+                mfccs = np.hstack((mfccs, pad))
             x = mfccs[np.newaxis, ..., np.newaxis]
-
-            # Realiza predição
-            pred = self.MODEL.predict(x)
+            pred = self.model.predict(x)
             cls = int(np.argmax(pred))
-
-            # Emite sinal com classe prevista
             self.class_ready.emit(cls)
 
-            # Pausa breve para simular streaming
             time.sleep(0.05)
 
     def stop(self):
