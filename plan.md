@@ -23,7 +23,9 @@ Documente todo o código de forma detalhada e didática, classes, funções e al
 - [x] Contar bytes por arquivo e média
 - [x] Contar arquivos processados
 - [ ] obter mais estátisticas
-- [ ] Adicionar um botão para tocar os ruidos, abrirá um modal com os botões agrupados para selecionar os ruidos da pasta train e da pasta test, e por sua vez agrupados pelas pastas que representam as classes, cria box com títulos para cada agrupamento.
+- [x] Adicionar um botão para tocar os ruidos, abrirá um modal com os botões agrupados para selecionar os ruidos da pasta train e da pasta test, e por sua vez agrupados pelas pastas que representam as classes, cria box com títulos para cada agrupamento.
+- [x] Refatorar modal de ruídos para exibir abas 'Treino' e 'Teste' com sub-abas por classe (Normal, Intermediário, Falha) e listas roláveis de arquivos
+- [x] Adicionar tracker de tempo de reprodução e botão Parar/Continuar no modal de ruídos
 
 ## Versão 2.0
 

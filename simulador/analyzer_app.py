@@ -24,10 +24,10 @@ from PyQt5.QtWidgets import (
     QSlider,
     QLabel,
     QComboBox,
-    QListWidget, QGroupBox,
+    QListWidget, QGroupBox, QTabWidget,
     QMessageBox
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 import statistics
 import psutil
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -192,6 +192,10 @@ class AnalyzerApp(QMainWindow):
         self.btn_classify = QPushButton('Iniciar Classificação')
         self.btn_classify.setStyleSheet('background-color: green;')
         ctrl_layout.addWidget(self.btn_classify)
+        self.btn_play_noises = QPushButton('Tocar Ruídos')
+        self.btn_play_noises.setStyleSheet('background-color: cyan;')
+        ctrl_layout.addWidget(self.btn_play_noises)
+        self.btn_play_noises.clicked.connect(self._open_play_noises_dialog)
 
         # Lista de algoritmos de classificação disponíveis
         ctrl_layout.addWidget(QLabel('Modelos:'))
@@ -776,6 +780,128 @@ class AnalyzerApp(QMainWindow):
         dialog = StatsDialog(self, current_stats, proposed_metrics)
         dialog.exec_()
 
+
+    def _play_noise(self, file_path):
+        """Toca arquivo de áudio especificado."""
+        try:
+            # Stop previous playback
+            if hasattr(self, 'playback_timer'):
+                self.playback_timer.stop()
+            sounddevice.stop()
+            # Load audio
+            y, sr = librosa.load(file_path, sr=SR)
+            # Setup playback variables
+            self.playback_data = y
+            self.playback_sr = sr
+            self.playback_total = len(y) / sr
+            self.playback_offset = 0.0
+            self.playback_start_time = time.time()
+            # Timer for tracker
+            if not hasattr(self, 'playback_timer'):
+                self.playback_timer = QTimer(self)
+                self.playback_timer.timeout.connect(self._update_playback_time)
+            self.playback_timer.start(100)
+            # Start audio
+            sounddevice.play(self.playback_data, self.playback_sr)
+            # Setup pause/resume button
+            self.btn_play_pause.setText("Parar")
+            self.btn_play_pause.setEnabled(True)
+            # Start classification of noise
+            try:
+                if hasattr(self, 'noise_class_thread') and self.noise_class_thread.isRunning():
+                    self.noise_class_thread.stop()
+                    self.noise_class_thread.wait()
+                self.noise_class_thread = ClassificationThread([file_path], self.model, self.b, self.a, SR, DURATION, N_MFCC, CUTOFF_FREQ)
+                self.noise_class_thread.class_ready.connect(self._update_noise_class)
+                self.noise_class_thread.start()
+            except Exception as e:
+                print(f"Erro ao iniciar classificação de ruído: {e}")
+        except Exception as e:
+            QMessageBox.warning(self, 'Erro ao tocar áudio', str(e))
+
+    def _open_play_noises_dialog(self):
+        """Abre diálogo para selecionar e tocar ruídos de treino e teste em abas, agrupados por classe."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle('Tocar Ruídos')
+        layout = QVBoxLayout(dialog)
+        # Playback tracker and control
+        tracker_layout = QHBoxLayout()
+        self.lbl_play_time = QLabel("00:00 / 00:00")
+        self.lbl_noise_class = QLabel("Classe: N/A")
+        self.btn_play_pause = QPushButton("Parar")
+        tracker_layout.addWidget(self.lbl_play_time)
+        tracker_layout.addWidget(self.lbl_noise_class)
+        tracker_layout.addWidget(self.btn_play_pause)
+        layout.addLayout(tracker_layout)
+        self.btn_play_pause.clicked.connect(self._toggle_play_pause)
+        tabs = QTabWidget(dialog)
+        mapping = {'0': '0 (Normal)', '1': '1 (Intermediário)', '2': '2 (Falha)'}
+        for label, dir_path in [('Treino', self.train_dir), ('Teste', self.test_dir)]:
+            tab = QWidget()
+            tab_layout = QVBoxLayout(tab)
+            class_tabs = QTabWidget(tab)
+            if os.path.isdir(dir_path):
+                for class_name in sorted(os.listdir(dir_path)):
+                    class_path = os.path.join(dir_path, class_name)
+                    if os.path.isdir(class_path):
+                        class_tab = QWidget()
+                        class_layout = QVBoxLayout(class_tab)
+                        list_widget = QListWidget(class_tab)
+                        for fname in sorted(os.listdir(class_path)):
+                            if fname.lower().endswith(('.wav', '.mp3', '.flac', '.ogg')):
+                                list_widget.addItem(fname)
+                        list_widget.itemClicked.connect(lambda item, p=class_path: self._play_noise(os.path.join(p, item.text())))
+                        class_layout.addWidget(list_widget)
+                        class_tab.setLayout(class_layout)
+                        class_tabs.addTab(class_tab, mapping.get(class_name, class_name))
+            tab_layout.addWidget(class_tabs)
+            tab.setLayout(tab_layout)
+            tabs.addTab(tab, label)
+        layout.addWidget(tabs)
+        dialog.resize(800, 600)
+        # Stop playback timer immediately when dialog finishes
+        dialog.finished.connect(lambda _: self.playback_timer.stop() if hasattr(self, 'playback_timer') else None)
+        dialog.exec_()
+
+    def _toggle_play_pause(self):
+        """Pauses or resumes audio playback."""
+        if hasattr(self, 'playback_timer') and self.playback_timer.isActive():
+            # pause
+            self.playback_timer.stop()
+            elapsed = time.time() - self.playback_start_time
+            self.playback_offset = elapsed
+            sounddevice.stop()
+            self.btn_play_pause.setText("Continuar")
+        else:
+            # resume
+            start_idx = int(self.playback_offset * self.playback_sr)
+            remaining = self.playback_data[start_idx:]
+            sounddevice.play(remaining, self.playback_sr)
+            self.playback_start_time = time.time() - self.playback_offset
+            self.playback_timer.start(100)
+            self.btn_play_pause.setText("Parar")
+
+    def _update_playback_time(self):
+        """Updates playback time tracker label."""
+        # Safely update label; stop timer if label deleted
+        try:
+            elapsed = time.time() - self.playback_start_time
+            total = getattr(self, 'playback_total', 0)
+            if elapsed >= total:
+                elapsed = total
+                self.playback_timer.stop()
+            elapsed_str = time.strftime("%M:%S", time.gmtime(elapsed))
+            total_str = time.strftime("%M:%S", time.gmtime(total))
+            self.lbl_play_time.setText(f"{elapsed_str} / {total_str}")
+        except Exception:
+            # QLabel deleted, stop timer
+            if hasattr(self, 'playback_timer') and self.playback_timer.isActive():
+                self.playback_timer.stop()
+
+    def _update_noise_class(self, predicted_class):
+        """Atualiza label de classificação do ruído."""
+        labels = {0: "Normal", 1: "Intermediário", 2: "Falha"}
+        self.lbl_noise_class.setText(f"Classe: {labels.get(predicted_class, predicted_class)}")
 
     def closeEvent(self, event):
         """
