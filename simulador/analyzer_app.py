@@ -13,6 +13,7 @@ import tensorflow as tf
 
 from PyQt5.QtWidgets import (
     QApplication,
+    QDialog,
     QMainWindow,
     QWidget,
     QVBoxLayout,
@@ -22,7 +23,7 @@ from PyQt5.QtWidgets import (
     QSlider,
     QLabel,
     QComboBox,
-    QListWidget,
+    QListWidget, QGroupBox,
     QMessageBox
 )
 from PyQt5.QtCore import Qt
@@ -35,7 +36,7 @@ from tensorflow.keras.utils import to_categorical
 # Importa módulo de thread de análise com sinais estendidos
 from .analysis_thread import FileAnalysisThread
 # Importa widgets personalizados de UI
-from .ui_widgets import VUWidget, ColorBox
+from .ui_widgets import VUWidget, ColorBox, ClickableLabel
 # Importa thread de classificação
 from .classification_thread import ClassificationThread
 
@@ -256,7 +257,8 @@ class AnalyzerApp(QMainWindow):
         disp_layout.addWidget(self.lbl_file_stats)
         self.lbl_total_stats = QLabel('Total duração: 0.00s | Total bytes: 0 bytes', alignment=Qt.AlignCenter)
         disp_layout.addWidget(self.lbl_total_stats)
-        self.lbl_overall_stats = QLabel('Arquivos: 0 | Média bytes/s: 0.00 | Média bytes/arquivo: 0', alignment=Qt.AlignCenter)
+        self.lbl_overall_stats = ClickableLabel('Arquivos: 0 | Média bytes/s: 0.00 | Média bytes/arquivo: 0', alignment=Qt.AlignCenter)
+        self.lbl_overall_stats.clicked.connect(self._show_stats_dialog)
         disp_layout.addWidget(self.lbl_overall_stats)
 
         # Empacota painel de visualização
@@ -626,6 +628,7 @@ class AnalyzerApp(QMainWindow):
 
     def _update_time_stats(self, file_time, file_duration, file_size):
         self.total_files += 1
+        self.total_files += 1
         """
         Atualiza tempo total e medio de processamento por segundo de audio.
         """
@@ -642,6 +645,24 @@ class AnalyzerApp(QMainWindow):
         avg = self.total_proc_time / self.total_audio_dur if self.total_audio_dur else 0
         self.lbl_time_stats.setText(f'Tempo total: {self.total_proc_time:.2f}s | Tempo médio: {avg:.2f}s/s')
 
+    def _show_stats_dialog(self):
+        current_stats = {
+            'Tempo total (s)': f"{self.total_proc_time:.2f}",
+            'Tempo médio (s/s)': f"{(self.total_proc_time / self.total_audio_dur if self.total_audio_dur else 0):.2f}",
+            'Duração total (s)': f"{self.total_audio_dur:.2f}",
+            'Total bytes': f"{self.total_bytes}",
+            'Total arquivos': f"{self.total_files}"}
+        proposed_metrics = {
+            'Latências por etapa': ['I/O disco', 'Pré-processamento', 'Inferência'],
+            'Estatísticas de latência': ['Média, mediana, percentis (p90/p95/p99)', 'Desvio-padrão'],
+            'Throughput': ['Arquivos/s', 'Bytes/s'],
+            'Uso de recursos': ['CPU (%)', 'Memória (MB)', 'I/O disco'],
+            'Métricas do modelo': ['Tamanho (MB)', 'Parâmetros', 'Tempo de carregamento'],
+            'Qualidade de classificação': ['Matriz de confusão', 'Precisão/Recall/F1', 'ROC/AUC'],
+        }
+        dialog = StatsDialog(self, current_stats, proposed_metrics)
+        dialog.exec_()
+
     def closeEvent(self, event):
         """
         Garante que a thread de análise seja finalizada
@@ -651,3 +672,30 @@ class AnalyzerApp(QMainWindow):
             self.thread.stop()
             self.thread.wait()
         event.accept()
+
+
+class StatsDialog(QDialog):
+    def __init__(self, parent, current_stats, proposed_metrics):
+        super().__init__(parent)
+        self.setWindowTitle('Detalhes de Estatísticas')
+        layout = QVBoxLayout(self)
+
+        # Métricas Atuais
+        group_current = QGroupBox('Métricas Atuais')
+        v1 = QVBoxLayout()
+        for k, v in current_stats.items():
+            v1.addWidget(QLabel(f"{k}: {v}"))
+        group_current.setLayout(v1)
+        layout.addWidget(group_current)
+
+        # Métricas Propostas
+        group_prop = QGroupBox('Métricas Propostas')
+        v2 = QVBoxLayout()
+        for cat, items in proposed_metrics.items():
+            v2.addWidget(QLabel(f"<b>{cat}</b>"))
+            for item in items:
+                v2.addWidget(QLabel(f"  - {item}"))
+        group_prop.setLayout(v2)
+        layout.addWidget(group_prop)
+
+        self.resize(500, 600)

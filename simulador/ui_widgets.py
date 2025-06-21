@@ -1,8 +1,20 @@
 # ui_widgets.py - Widgets personalizados para a interface
 
 from PyQt5.QtWidgets import QProgressBar, QLabel
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 
+class ClickableLabel(QLabel):
+    """
+    QLabel clicável que emite um signal `clicked` quando pressionado.
+    """
+    clicked = pyqtSignal()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+        self.clicked.emit()
 
 class VUWidget(QProgressBar):
     """
