@@ -256,6 +256,8 @@ class AnalyzerApp(QMainWindow):
         disp_layout.addWidget(self.lbl_file_stats)
         self.lbl_total_stats = QLabel('Total duração: 0.00s | Total bytes: 0 bytes', alignment=Qt.AlignCenter)
         disp_layout.addWidget(self.lbl_total_stats)
+        self.lbl_overall_stats = QLabel('Arquivos: 0 | Média bytes/s: 0.00 | Média bytes/arquivo: 0', alignment=Qt.AlignCenter)
+        disp_layout.addWidget(self.lbl_overall_stats)
 
         # Empacota painel de visualização
         disp_widget = QWidget()
@@ -582,6 +584,8 @@ class AnalyzerApp(QMainWindow):
             CUTOFF_FREQ
         )
         # Inicializa métricas de tempo
+        self.total_files = 0
+        self.lbl_overall_stats.setText('Arquivos: 0 | Média bytes/s: 0.00 | Média bytes/arquivo: 0')
         self.total_proc_time = 0.0
         self.total_audio_dur = 0.0
         self.total_bytes = 0
@@ -621,6 +625,7 @@ class AnalyzerApp(QMainWindow):
         self.progress_bar.setValue(index)
 
     def _update_time_stats(self, file_time, file_duration, file_size):
+        self.total_files += 1
         """
         Atualiza tempo total e medio de processamento por segundo de audio.
         """
@@ -631,6 +636,9 @@ class AnalyzerApp(QMainWindow):
         self.lbl_time_stats.setText(f'Tempo total: {self.total_proc_time:.2f}s | Tempo médio: {avg:.2f}s/s')
         self.lbl_file_stats.setText(f'Duração: {file_duration:.2f}s | Tamanho: {file_size} bytes')
         self.lbl_total_stats.setText(f'Total duração: {self.total_audio_dur:.2f}s | Total bytes: {self.total_bytes} bytes')
+        avg_bytes_per_sec = self.total_bytes / self.total_audio_dur if self.total_audio_dur else 0
+        avg_bytes_per_file = self.total_bytes / self.total_files if self.total_files else 0
+        self.lbl_overall_stats.setText(f'Arquivos: {self.total_files} | Média bytes/s: {avg_bytes_per_sec:.2f} | Média bytes/arquivo: {avg_bytes_per_file:.0f}')
         avg = self.total_proc_time / self.total_audio_dur if self.total_audio_dur else 0
         self.lbl_time_stats.setText(f'Tempo total: {self.total_proc_time:.2f}s | Tempo médio: {avg:.2f}s/s')
 
