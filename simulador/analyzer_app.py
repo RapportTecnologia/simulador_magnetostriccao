@@ -250,6 +250,8 @@ class AnalyzerApp(QMainWindow):
         current_model = self.lst_models.currentItem().text()
         self.lbl_model = QLabel(f'Modelo: {current_model}', alignment=Qt.AlignCenter)
         disp_layout.addWidget(self.lbl_model)
+        self.lbl_time_stats = QLabel('Tempo total: 0.00s | Tempo médio: 0.00s/s', alignment=Qt.AlignCenter)
+        disp_layout.addWidget(self.lbl_time_stats)
 
         # Empacota painel de visualização
         disp_widget = QWidget()
@@ -575,6 +577,11 @@ class AnalyzerApp(QMainWindow):
             N_MFCC,
             CUTOFF_FREQ
         )
+        # Inicializa métricas de tempo
+        self.total_proc_time = 0.0
+        self.total_audio_dur = 0.0
+        # Conecta sinal de métricas de processamento
+        self.classification_thread.processing_metrics.connect(self._update_time_stats)
         self.classification_thread.progress.connect(self._update_progress)
         self.classification_thread.spec_ready.connect(self._update_spectrogram)
         self.classification_thread.mel_ready.connect(self._update_mel_bands)
@@ -604,6 +611,15 @@ class AnalyzerApp(QMainWindow):
         self.lbl_file.setText(f'Arquivo: {file_name}')
         self.statusBar().showMessage(f'Classificando: {index}/{total}')
         self.progress_bar.setValue(index)
+
+    def _update_time_stats(self, file_time, file_duration):
+        """
+        Atualiza tempo total e medio de processamento por segundo de audio.
+        """
+        self.total_proc_time += file_time
+        self.total_audio_dur += file_duration
+        avg = self.total_proc_time / self.total_audio_dur if self.total_audio_dur else 0
+        self.lbl_time_stats.setText(f'Tempo total: {self.total_proc_time:.2f}s | Tempo médio: {avg:.2f}s/s')
 
     def closeEvent(self, event):
         """

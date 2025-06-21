@@ -8,6 +8,8 @@ Identificar e agrupar por versões.
 
 Antes de partir para a próxima versão fazer uma tag no git indicando a versão atual
 
+Documente todo o código de forma detalhada e didática, classes, funções e algoritmos que se distacam.
+
 # TODO
 
 ## Versão 1.0
@@ -36,6 +38,22 @@ Antes de partir para a próxima versão fazer uma tag no git indicando a versão
 - [ ] Adicionar um menu que permite escolher onde será gravado o relatório
 
 ## Versão 4.0
+- O branch de trabalho no git da versão 4.0 é o branch servidor_RESTfull.
+- De tarefa em tarefa concluida deve fazer o git add e git commit com a mensagem da tarefa concluida e descrita.
 
-- [ ] Permitir conexão via restfull, obedecendo o padrão da API da OpenAI, para receber arquivos de áudio e retornar a classificação.
-- [ ] 
+- [X] Permitir conexão via restfull, obedecendo o padrão da API da OpenAI, para receber arquivos de áudio e retornar a classificação.
+- [X] Gerar um cliente para o servidor RESTfull que seja compatível com o uso como funções do Open Web UI, na pasta RESTfull.
+- [X] o arquivo rest_client.py deve estar na pasta RESTfull. Remova o arquivo rest_client.py da pasta simulador.
+- [X] Adicionar os seguintes metadados que devem ser retornados pelo servidor RESTfull: Formatos de áudio suportado WAV, MP3, OGG, comprimento do arquivo, formato do áudio, amostragem utilizada
+- [X] Gerar o swarmm.json para o servidor RESTfull, na pasta RESTfull.
+- [X] Documentar em RESTfull.md como usar o servidor RESTfull
+- [X] adicionar a chave de comando --rest para iniciar o servidor RESTfull como serviço do linux usando o systemd, crie um arquivo de serviço de exemplo na pasta RESTfull.
+- [X] Quando usar a chave --rest pode-se também usar a chave --host e/ou --port que informa o ip a ser ligado o servidor RESTfull e a porta que escutará.
+- [X] Ajustar o cliente para que ele se expelhe na classe "função do tipo action do open webui" de exemplo "action.py" que está na pasta RESTfull. Ajustes os comentários para que o autor seja Carlos Delfino, e o email seja consultoria@carlosdelfino.eti.br, versão 0.1.0, Titulo Analisador de Ruidos de Magnetostricção, Open Web UI requirido na versão 0.3.9
+- [X] Criar um script para instalar o serviço RESTfull
+
+## Versão 4.1
+Sempre tratar os arquivos de audio como brutos, e não urls ou paths.
+
+- [X] Corrigir a requisição de envio do audio, deve ser o áudio codificado, ele deve vir em formato bruto como wave, mp3 ou ogg.
+
