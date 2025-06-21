@@ -18,6 +18,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
+    QGridLayout,
     QPushButton,
     QProgressBar,
     QSlider,
@@ -27,6 +28,8 @@ from PyQt5.QtWidgets import (
     QMessageBox
 )
 from PyQt5.QtCore import Qt
+import statistics
+import psutil
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from tensorflow.keras import Input, Model
@@ -251,15 +254,40 @@ class AnalyzerApp(QMainWindow):
         current_model = self.lst_models.currentItem().text()
         self.lbl_model = QLabel(f'Modelo: {current_model}', alignment=Qt.AlignCenter)
         disp_layout.addWidget(self.lbl_model)
+        # Inicializa labels de estatísticas
         self.lbl_time_stats = QLabel('Tempo total: 0.00s | Tempo médio: 0.00s/s', alignment=Qt.AlignCenter)
-        disp_layout.addWidget(self.lbl_time_stats)
         self.lbl_file_stats = QLabel('Duração: 0.00s | Tamanho: 0 bytes', alignment=Qt.AlignCenter)
-        disp_layout.addWidget(self.lbl_file_stats)
         self.lbl_total_stats = QLabel('Total duração: 0.00s | Total bytes: 0 bytes', alignment=Qt.AlignCenter)
-        disp_layout.addWidget(self.lbl_total_stats)
         self.lbl_overall_stats = ClickableLabel('Arquivos: 0 | Média bytes/s: 0.00 | Média bytes/arquivo: 0', alignment=Qt.AlignCenter)
         self.lbl_overall_stats.clicked.connect(self._show_stats_dialog)
-        disp_layout.addWidget(self.lbl_overall_stats)
+        # Estatísticas agrupadas
+        group_tempo = QGroupBox('Tempo')
+        tempo_lay = QVBoxLayout()
+        tempo_lay.addWidget(self.lbl_time_stats)
+        group_tempo.setLayout(tempo_lay)
+        group_audio = QGroupBox('Áudio')
+        audio_lay = QVBoxLayout()
+        audio_lay.addWidget(self.lbl_file_stats)
+        audio_lay.addWidget(self.lbl_total_stats)
+        group_audio.setLayout(audio_lay)
+        group_geral = QGroupBox('Geral')
+        geral_lay = QVBoxLayout()
+        geral_lay.addWidget(self.lbl_overall_stats)
+        group_geral.setLayout(geral_lay)
+        stats_grid = QGridLayout()
+        stats_grid.addWidget(group_tempo, 0, 0)
+        stats_grid.addWidget(group_audio, 0, 1)
+        stats_grid.addWidget(group_geral, 1, 0)
+        disp_layout.addLayout(stats_grid)
+
+
+
+
+
+
+
+
+
 
         # Empacota painel de visualização
         disp_widget = QWidget()
@@ -586,6 +614,18 @@ class AnalyzerApp(QMainWindow):
             CUTOFF_FREQ
         )
         # Inicializa métricas de tempo
+        self.load_times = []
+        self.preproc_times = []
+        self.inf_times = []
+        self.total_load_time = 0.0
+        self.total_preproc_time = 0.0
+        self.total_inf_time = 0.0
+        self.cpu_usages = []
+        self.mem_usages = []
+        self.total_cpu_usage = 0.0
+        self.total_mem_usage = 0.0
+        # Conecta sinal de métricas detalhadas
+        self.classification_thread.detailed_metrics.connect(self._update_detailed_stats)
         self.total_files = 0
         self.lbl_overall_stats.setText('Arquivos: 0 | Média bytes/s: 0.00 | Média bytes/arquivo: 0')
         self.total_proc_time = 0.0
@@ -596,7 +636,9 @@ class AnalyzerApp(QMainWindow):
         self.lbl_total_stats.setText('Total duração: 0.00s | Total bytes: 0 bytes')
         # Conecta sinal de métricas de processamento
         self.classification_thread.processing_metrics.connect(self._update_time_stats)
+        # Conecta sinal de métricas detalhadas
         self.classification_thread.progress.connect(self._update_progress)
+        self.classification_thread.detailed_metrics.connect(self._update_detailed_stats)
         self.classification_thread.spec_ready.connect(self._update_spectrogram)
         self.classification_thread.mel_ready.connect(self._update_mel_bands)
         self.classification_thread.fft_ready.connect(self._update_fft)
@@ -627,41 +669,113 @@ class AnalyzerApp(QMainWindow):
         self.progress_bar.setValue(index)
 
     def _update_time_stats(self, file_time, file_duration, file_size):
-        self.total_files += 1
-        self.total_files += 1
         """
-        Atualiza tempo total e medio de processamento por segundo de audio.
+        Atualiza tempo total, duração e coleta de recursos por arquivo processado.
         """
+        # Incrementa métricas gerais
+        self.total_files += 1
         self.total_proc_time += file_time
         self.total_audio_dur += file_duration
         self.total_bytes += file_size
-        avg = self.total_proc_time / self.total_audio_dur if self.total_audio_dur else 0
-        self.lbl_time_stats.setText(f'Tempo total: {self.total_proc_time:.2f}s | Tempo médio: {avg:.2f}s/s')
+        # Atualiza widgets de tempo e bytes
+        avg_time = self.total_proc_time / self.total_audio_dur if self.total_audio_dur else 0
+        self.lbl_time_stats.setText(f'Tempo total: {self.total_proc_time:.2f}s | Tempo médio: {avg_time:.2f}s/s')
         self.lbl_file_stats.setText(f'Duração: {file_duration:.2f}s | Tamanho: {file_size} bytes')
         self.lbl_total_stats.setText(f'Total duração: {self.total_audio_dur:.2f}s | Total bytes: {self.total_bytes} bytes')
         avg_bytes_per_sec = self.total_bytes / self.total_audio_dur if self.total_audio_dur else 0
         avg_bytes_per_file = self.total_bytes / self.total_files if self.total_files else 0
         self.lbl_overall_stats.setText(f'Arquivos: {self.total_files} | Média bytes/s: {avg_bytes_per_sec:.2f} | Média bytes/arquivo: {avg_bytes_per_file:.0f}')
-        avg = self.total_proc_time / self.total_audio_dur if self.total_audio_dur else 0
-        self.lbl_time_stats.setText(f'Tempo total: {self.total_proc_time:.2f}s | Tempo médio: {avg:.2f}s/s')
+        # Coleta uso de CPU e memória ao final do processamento de cada arquivo
+        cpu = psutil.cpu_percent(interval=None)
+        mem = psutil.virtual_memory().percent
+        self.cpu_usages.append(cpu)
+        self.mem_usages.append(mem)
+
+    def _update_detailed_stats(self, load_time, preproc_time, inference_time):
+        """Recebe métricas detalhadas de tempo de cada etapa e armazena."""
+        # Armazena tempos de cada etapa
+        self.load_times.append(load_time)
+        self.preproc_times.append(preproc_time)
+        self.inf_times.append(inference_time)
+        # Acumula tempos totais
+        self.total_load_time += load_time
+        self.total_preproc_time += preproc_time
+        self.total_inf_time += inference_time
 
     def _show_stats_dialog(self):
+        # Monta métricas dinâmicas propostas
+        proposed_metrics = {}
+        # Latências por etapa
+        avg_load = sum(self.load_times)/len(self.load_times) if self.load_times else 0
+        avg_pre = sum(self.preproc_times)/len(self.preproc_times) if self.preproc_times else 0
+        avg_inf = sum(self.inf_times)/len(self.inf_times) if self.inf_times else 0
+        proposed_metrics['Latências por etapa'] = {
+            'I/O média (s)': f"{avg_load:.3f}",
+            'Pré-processamento média (s)': f"{avg_pre:.3f}",
+            'Inferência média (s)': f"{avg_inf:.3f}"
+        }
+        # Estatísticas de latência
+        stats = {}
+        stats['I/O mediana (s)'] = f"{statistics.median(self.load_times):.3f}" if self.load_times else "0.000"
+        stats['I/O p90 (s)'] = f"{statistics.quantiles(self.load_times, n=100)[89]:.3f}" if self.load_times else "0.000"
+        stats['Pré mediana (s)'] = f"{statistics.median(self.preproc_times):.3f}" if self.preproc_times else "0.000"
+        stats['Pré p90 (s)'] = f"{statistics.quantiles(self.preproc_times, n=100)[89]:.3f}" if self.preproc_times else "0.000"
+        stats['Inf mediana (s)'] = f"{statistics.median(self.inf_times):.3f}" if self.inf_times else "0.000"
+        stats['Inf p90 (s)'] = f"{statistics.quantiles(self.inf_times, n=100)[89]:.3f}" if self.inf_times else "0.000"
+        proposed_metrics['Estatísticas de latência'] = stats
+        # Throughput
+        files_per_sec = self.total_files/self.total_proc_time if self.total_proc_time else 0
+        bytes_per_sec = self.total_bytes/self.total_proc_time if self.total_proc_time else 0
+        proposed_metrics['Throughput'] = {
+            'Arquivos/s': f"{files_per_sec:.3f}",
+            'Bytes/s': f"{bytes_per_sec:.0f}"
+        }
+        # Uso de recursos
+        # Valores coletados durante processamento
+        if self.cpu_usages:
+            avg_cpu = sum(self.cpu_usages)/len(self.cpu_usages)
+            median_cpu = statistics.median(self.cpu_usages)
+            p90_cpu = statistics.quantiles(self.cpu_usages, n=100)[89]
+        else:
+            avg_cpu = median_cpu = p90_cpu = 0.0
+        if self.mem_usages:
+            avg_mem = sum(self.mem_usages)/len(self.mem_usages)
+            median_mem = statistics.median(self.mem_usages)
+            p90_mem = statistics.quantiles(self.mem_usages, n=100)[89]
+        else:
+            avg_mem = median_mem = p90_mem = 0.0
+        proposed_metrics['Uso de recursos'] = {
+            'CPU média (%)': f"{avg_cpu:.1f}",
+            'CPU mediana (%)': f"{median_cpu:.1f}",
+            'CPU p90 (%)': f"{p90_cpu:.1f}",
+            'Memória média (%)': f"{avg_mem:.1f}",
+            'Memória mediana (%)': f"{median_mem:.1f}",
+            'Memória p90 (%)': f"{p90_mem:.1f}"
+        }
+        # Métricas do modelo
+        param_count = self.model.count_params() if hasattr(self.model, 'count_params') else 'N/A'
+        model_size = os.path.getsize(self.model_path)/1024/1024 if os.path.exists(self.model_path) else 0
+        proposed_metrics['Métricas do modelo'] = {
+            'Parâmetros': str(param_count),
+            'Tamanho do modelo (MB)': f"{model_size:.2f}"
+        }
+        # Qualidade de classificação
+        proposed_metrics['Qualidade de classificação'] = {
+            'Matriz de confusão': 'N/A',
+            'Precision/Recall/F1': 'N/A',
+            'ROC/AUC': 'N/A'
+        }
+        # Monta diálogo
         current_stats = {
             'Tempo total (s)': f"{self.total_proc_time:.2f}",
-            'Tempo médio (s/s)': f"{(self.total_proc_time / self.total_audio_dur if self.total_audio_dur else 0):.2f}",
+            'Tempo médio (s/s)': f"{(self.total_proc_time/self.total_audio_dur if self.total_audio_dur else 0):.2f}",
             'Duração total (s)': f"{self.total_audio_dur:.2f}",
             'Total bytes': f"{self.total_bytes}",
-            'Total arquivos': f"{self.total_files}"}
-        proposed_metrics = {
-            'Latências por etapa': ['I/O disco', 'Pré-processamento', 'Inferência'],
-            'Estatísticas de latência': ['Média, mediana, percentis (p90/p95/p99)', 'Desvio-padrão'],
-            'Throughput': ['Arquivos/s', 'Bytes/s'],
-            'Uso de recursos': ['CPU (%)', 'Memória (MB)', 'I/O disco'],
-            'Métricas do modelo': ['Tamanho (MB)', 'Parâmetros', 'Tempo de carregamento'],
-            'Qualidade de classificação': ['Matriz de confusão', 'Precisão/Recall/F1', 'ROC/AUC'],
+            'Total arquivos': f"{self.total_files}"
         }
         dialog = StatsDialog(self, current_stats, proposed_metrics)
         dialog.exec_()
+
 
     def closeEvent(self, event):
         """
@@ -679,7 +793,6 @@ class StatsDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle('Detalhes de Estatísticas')
         layout = QVBoxLayout(self)
-
         # Métricas Atuais
         group_current = QGroupBox('Métricas Atuais')
         v1 = QVBoxLayout()
@@ -687,15 +800,21 @@ class StatsDialog(QDialog):
             v1.addWidget(QLabel(f"{k}: {v}"))
         group_current.setLayout(v1)
         layout.addWidget(group_current)
+        # Métricas Propostas Dinâmicas
+        prop_grid = QGridLayout()
+        for idx, (cat, items) in enumerate(proposed_metrics.items()):
+            box = QGroupBox(cat)
+            bl = QVBoxLayout()
+            if isinstance(items, dict):
+                for name, val in items.items():
+                    bl.addWidget(QLabel(f"{name}: {val}"))
+            else:
+                for item in items:
+                    bl.addWidget(QLabel(item))
+            box.setLayout(bl)
+            row = idx // 2
+            col = idx % 2
+            prop_grid.addWidget(box, row, col)
+        layout.addLayout(prop_grid)
+        self.resize(600, 800)
 
-        # Métricas Propostas
-        group_prop = QGroupBox('Métricas Propostas')
-        v2 = QVBoxLayout()
-        for cat, items in proposed_metrics.items():
-            v2.addWidget(QLabel(f"<b>{cat}</b>"))
-            for item in items:
-                v2.addWidget(QLabel(f"  - {item}"))
-        group_prop.setLayout(v2)
-        layout.addWidget(group_prop)
-
-        self.resize(500, 600)

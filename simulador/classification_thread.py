@@ -14,6 +14,8 @@ class ClassificationThread(QThread):
     class_ready = pyqtSignal(int)
     finished = pyqtSignal()
     processing_metrics = pyqtSignal(float, float, int)
+    # Sinal para tempos de I/O, pré-processamento e inferência (segundos)
+    detailed_metrics = pyqtSignal(float, float, float)
 
     def __init__(self, test_files, model, b, a, sr, duration, n_mfcc, fmax):
         super().__init__()
@@ -45,11 +47,16 @@ class ClassificationThread(QThread):
 
         for index, file_path in enumerate(self.test_files, start=1):
             start_time = time.time()
+            # Inicia medição de I/O
+            load_start = start_time
             if not self._running:
                 break
 
             # Carrega e filtra
             y_test, _ = librosa.load(file_path, sr=self.sr, duration=self.duration)
+            load_time = time.time() - load_start
+            # Inicia medição de pré-processamento
+            proc_start = time.time()
             y_test = scipy.signal.filtfilt(self.b, self.a, y_test)
             # Emit spectrogram data
             S = librosa.stft(y_test)
@@ -77,10 +84,15 @@ class ClassificationThread(QThread):
             else:
                 pad = np.zeros((40, T - mfcc_test.shape[1]))
                 mfcc_test = np.hstack((mfcc_test, pad))
+            # Finaliza pré-processamento
+            preproc_time = time.time() - proc_start
 
             # Prediz classe
             x_input = mfcc_test[np.newaxis, ..., np.newaxis]
+            # Mede tempo de inferência
+            inf_start = time.time()
             pred = self.model.predict(x_input)
+            inference_time = time.time() - inf_start
             predicted_class = int(np.argmax(pred))
             # Emit classification result
             self.class_ready.emit(predicted_class)
@@ -104,6 +116,8 @@ class ClassificationThread(QThread):
             file_duration = len(y_test) / self.sr
             file_time = time.time() - start_time
             file_size = os.path.getsize(file_path)
+            # Emite métricas detalhadas
+            self.detailed_metrics.emit(load_time, preproc_time, inference_time)
             self.processing_metrics.emit(file_time, file_duration, file_size)
             self.progress.emit(index, total_files)
 

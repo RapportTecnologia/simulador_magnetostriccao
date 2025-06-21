@@ -21,10 +21,13 @@ Documente todo o código de forma detalhada e didática, classes, funções e al
 - [ ] Adicionar chave de comando para que já inicialize a treinamento, mas neste caso se for informado o nome do aquivo de modelo salva sobre ele e se não existir cria.
 - [x] Adicionar contagem de segundos por arquivo e média
 - [x] Contar bytes por arquivo e média
-- [ ] Contar arquivos processados
+- [x] Contar arquivos processados
+- [ ] obter mais estátisticas
+- [ ] Adicionar um botão para tocar os ruidos, abrirá um modal com os botões agrupados para selecionar os ruidos da pasta train e da pasta test, e por sua vez agrupados pelas pastas que representam as classes, cria box com títulos para cada agrupamento.
 
 ## Versão 2.0
 
+- [ ] Ajustar o script de criação h5 para stm32, para criar o projeto conforme o processador escolhido, família ou placa de protipação, criar toda a estrutura inclusive o arquivo ioc adequado.
 - [ ] Mover todos os parametros staticos para um arquivo de configuração config.py na pasta simulador.
 - [ ] Mover todos os parametros de layout para um arquivo layout.py na pasta simulador.
 - [ ] Adicionar um splash screen que mostra o nome do projeto, os autores, a versão, esta informações estão no arquivo version.py na pasta simulador.
