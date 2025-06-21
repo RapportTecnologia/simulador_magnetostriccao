@@ -202,3 +202,5 @@ ruidos_externos/
 *.csv
 
 gpu_files/
+
+.windsurf/
