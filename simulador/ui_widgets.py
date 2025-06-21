@@ -91,14 +91,16 @@ class ColorBox(QLabel):
         Parâmetros:
         - cls: inteiro (0, 1 ou 2).
         """
-        # Obtém cor e rótulo
+        # Obtém cor, rótulo e define cor do texto
         color = self.COLORS.get(cls, '#ffffff')
+        text_colors = {0: 'white', 1: 'black', 2: 'white'}
+        text_color = text_colors.get(cls, 'black')
         label = self.LABELS.get(cls, '-')
 
         # Atualiza texto
         self.setText(f'Status: {label}')
 
-        # Atualiza cor de fundo
+        # Atualiza cor de fundo e cor do texto
         self.setStyleSheet(
-            f'border: 1px solid #000000; background-color: {color};'
+            f'border: 1px solid #000000; background-color: {color}; color: {text_color};'
         )

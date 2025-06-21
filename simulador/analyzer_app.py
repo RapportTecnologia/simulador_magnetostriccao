@@ -388,6 +388,7 @@ class AnalyzerApp(QMainWindow):
             aspect='auto',
             extent=[0, DURATION, freqs[0], freqs[-1]]
         )
+        ax.set_ylim(0, CUTOFF_FREQ)
         self.canvas_spec.draw()
         QApplication.processEvents()
 
@@ -408,6 +409,7 @@ class AnalyzerApp(QMainWindow):
         self.fig_fft.clear()
         ax = self.fig_fft.add_subplot(111)
         ax.plot(freqs, magnitudes)
+        ax.set_xlim(0, CUTOFF_FREQ)
         self.canvas_fft.draw()
         QApplication.processEvents()
 
@@ -575,6 +577,10 @@ class AnalyzerApp(QMainWindow):
         """
         Classifica todos os arquivos de teste e cria relatório CSV.
         """
+        # Verifica modelo carregado
+        if self.model is None:
+            QMessageBox.warning(self, "Modelo não carregado", "Nenhum modelo carregado. Carregue ou treine um modelo antes de classificar.")
+            return
         # Alterna estado de classificação
         running = getattr(self, 'classifying', False)
         if running:
@@ -806,16 +812,66 @@ class AnalyzerApp(QMainWindow):
             # Setup pause/resume button
             self.btn_play_pause.setText("Parar")
             self.btn_play_pause.setEnabled(True)
-            # Start classification of noise
+            # Update file status info
+            if hasattr(self, 'lbl_file_name'):
+                self.lbl_file_name.setText(f"Nome: {os.path.basename(file_path)}")
+                self.lbl_file_size.setText(f"Tamanho: {os.path.getsize(file_path)/1024:.2f} KB")
+                self.lbl_file_duration.setText(f"Duração: {len(y)/sr:.2f} s")
+                self.lbl_file_sr.setText(f"Sample Rate: {sr} Hz")
+            # Compute and display spectrogram (<=1000Hz)
             try:
-                if hasattr(self, 'noise_class_thread') and self.noise_class_thread.isRunning():
-                    self.noise_class_thread.stop()
-                    self.noise_class_thread.wait()
-                self.noise_class_thread = ClassificationThread([file_path], self.model, self.b, self.a, SR, DURATION, N_MFCC, CUTOFF_FREQ)
-                self.noise_class_thread.class_ready.connect(self._update_noise_class)
-                self.noise_class_thread.start()
-            except Exception as e:
-                print(f"Erro ao iniciar classificação de ruído: {e}")
+                spec_full = np.abs(librosa.stft(y))
+                freqs = librosa.fft_frequencies(sr=sr)
+                mask = freqs <= CUTOFF_FREQ
+                spec = spec_full[mask, :]
+                spec_db = librosa.amplitude_to_db(spec, ref=np.max)
+                ax_spec = self.canvas_spec.figure.subplots()
+                ax_spec.clear()
+                extent = [0, len(y)/sr, freqs[mask][0], freqs[mask][-1]]
+                ax_spec.imshow(spec_db, aspect='auto', origin='lower', extent=extent)
+                ax_spec.set_ylim(0, CUTOFF_FREQ)
+                ax_spec.set_title("Espectrograma")
+                self.canvas_spec.draw()
+            except Exception:
+                pass
+            # Compute and display FFT (<=1000Hz)
+            try:
+                fft_vals_full = np.abs(np.fft.rfft(y))
+                fft_freqs = np.fft.rfftfreq(len(y), 1/sr)
+                mask_fft = fft_freqs <= CUTOFF_FREQ
+                fft_vals = fft_vals_full[mask_fft]
+                fft_freqs = fft_freqs[mask_fft]
+                ax_fft = self.canvas_fft.figure.subplots()
+                ax_fft.clear()
+                ax_fft.plot(fft_freqs, fft_vals)
+                ax_fft.set_xlim(0, CUTOFF_FREQ)
+                ax_fft.set_title("FFT")
+                self.canvas_fft.draw()
+            except Exception:
+                pass
+            # Compute relevant harmonics
+            try:
+                peaks, _ = scipy.signal.find_peaks(fft_vals, height=np.max(fft_vals)*0.1)
+                top_peaks = peaks[np.argsort(fft_vals[peaks])[-5:]]
+                harm_text = ""
+                for p in sorted(top_peaks):
+                    harm_text += f"{fft_freqs[p]:.1f} Hz: {fft_vals[p]:.2f}\n"
+                self.lbl_harmonics.setText(harm_text)
+            except Exception:
+                pass
+            # Start classification of noise
+            if self.model is None:
+                QMessageBox.warning(self, "Modelo não carregado", "Nenhum modelo carregado. Carregue ou treine um modelo antes de classificar.")
+            else:
+                try:
+                    if hasattr(self, 'noise_class_thread') and self.noise_class_thread.isRunning():
+                        self.noise_class_thread.stop()
+                        self.noise_class_thread.wait()
+                    self.noise_class_thread = ClassificationThread([file_path], self.model, self.b, self.a, SR, DURATION, N_MFCC, CUTOFF_FREQ)
+                    self.noise_class_thread.class_ready.connect(self._update_noise_class)
+                    self.noise_class_thread.start()
+                except Exception as e:
+                    print(f"Erro ao iniciar classificação de ruído: {e}")
         except Exception as e:
             QMessageBox.warning(self, 'Erro ao tocar áudio', str(e))
 
@@ -858,10 +914,54 @@ class AnalyzerApp(QMainWindow):
             tab.setLayout(tab_layout)
             tabs.addTab(tab, label)
         layout.addWidget(tabs)
+        # Status panel
+        status_group = QGroupBox("Status do Arquivo")
+        status_layout = QGridLayout()
+        self.lbl_file_name = QLabel("Nome: N/A")
+        self.lbl_file_size = QLabel("Tamanho: N/A")
+        self.lbl_file_duration = QLabel("Duração: N/A")
+        self.lbl_file_sr = QLabel("Sample Rate: N/A")
+        status_layout.addWidget(self.lbl_file_name, 0, 0)
+        status_layout.addWidget(self.lbl_file_size, 0, 1)
+        status_layout.addWidget(self.lbl_file_duration, 1, 0)
+        status_layout.addWidget(self.lbl_file_sr, 1, 1)
+        status_group.setLayout(status_layout)
+        layout.addWidget(status_group)
+        # Harmônicas relevantes
+        harmonics_group = QGroupBox("Harmônicas Relevantes")
+        harmonics_layout = QVBoxLayout()
+        self.lbl_harmonics = QLabel("N/A")
+        harmonics_layout.addWidget(self.lbl_harmonics)
+        harmonics_group.setLayout(harmonics_layout)
+        layout.addWidget(harmonics_group)
+        # Espectrograma e FFT
+        plot_tabs = QTabWidget()
+        spec_tab = QWidget()
+        spec_layout = QVBoxLayout()
+        self.canvas_spec = FigureCanvas(Figure(figsize=(4,3)))
+        spec_layout.addWidget(self.canvas_spec)
+        spec_tab.setLayout(spec_layout)
+        fft_tab = QWidget()
+        fft_layout = QVBoxLayout()
+        self.canvas_fft = FigureCanvas(Figure(figsize=(4,3)))
+        fft_layout.addWidget(self.canvas_fft)
+        fft_tab.setLayout(fft_layout)
+        plot_tabs.addTab(spec_tab, "Espectrograma")
+        plot_tabs.addTab(fft_tab, "FFT")
+        layout.addWidget(plot_tabs)
         dialog.resize(800, 600)
-        # Stop playback timer immediately when dialog finishes
-        dialog.finished.connect(lambda _: self.playback_timer.stop() if hasattr(self, 'playback_timer') else None)
+        # Stop playback and classification when dialog finishes
+        dialog.finished.connect(self._stop_single_playback_analysis)
         dialog.exec_()
+
+    def _stop_single_playback_analysis(self):
+        """Para reprodução e classificação quando a janela de reprodução é fechada."""
+        if hasattr(self, 'playback_timer') and self.playback_timer.isActive():
+            self.playback_timer.stop()
+        sounddevice.stop()
+        if hasattr(self, 'noise_class_thread') and self.noise_class_thread.isRunning():
+            self.noise_class_thread.stop()
+            self.noise_class_thread.wait()
 
     def _toggle_play_pause(self):
         """Pauses or resumes audio playback."""
@@ -901,7 +1001,16 @@ class AnalyzerApp(QMainWindow):
     def _update_noise_class(self, predicted_class):
         """Atualiza label de classificação do ruído."""
         labels = {0: "Normal", 1: "Intermediário", 2: "Falha"}
-        self.lbl_noise_class.setText(f"Classe: {labels.get(predicted_class, predicted_class)}")
+        colors = {0: "green", 1: "yellow", 2: "red"}
+        text_colors = {0: "white", 1: "black", 2: "white"}
+        label_text = labels.get(predicted_class, predicted_class)
+        self.lbl_noise_class.setText(f"Classe: {label_text}")
+        color = colors.get(predicted_class, "")
+        text_color = text_colors.get(predicted_class, "black")
+        if color:
+            self.lbl_noise_class.setStyleSheet(f"background-color: {color}; color: {text_color};")
+        else:
+            self.lbl_noise_class.setStyleSheet("")
 
     def closeEvent(self, event):
         """
