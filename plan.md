@@ -19,6 +19,9 @@ Documente todo o código de forma detalhada e didática, classes, funções e al
 - [ ] Adicionar chave de comando para que já inicialize a análise de arquivos de teste, sendo que neste caso será obrigatório que o arquivo de modelo já exista e seja informado em conjunto
 - [ ] Adicionar chave de comando para que já inicialize a classificação de arquivos de teste, sendo que neste caso será obrigatório que o arquivo de modelo já exista e seja informado em conjunto
 - [ ] Adicionar chave de comando para que já inicialize a treinamento, mas neste caso se for informado o nome do aquivo de modelo salva sobre ele e se não existir cria.
+- [x] Adicionar contagem de segundos por arquivo e média
+- [x] Contar bytes por arquivo e média
+- [ ] Contar arquivos processados
 
 ## Versão 2.0
 

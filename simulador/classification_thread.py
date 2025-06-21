@@ -13,7 +13,7 @@ class ClassificationThread(QThread):
     fft_ready = pyqtSignal(np.ndarray, np.ndarray)
     class_ready = pyqtSignal(int)
     finished = pyqtSignal()
-    processing_metrics = pyqtSignal(float, float)
+    processing_metrics = pyqtSignal(float, float, int)
 
     def __init__(self, test_files, model, b, a, sr, duration, n_mfcc, fmax):
         super().__init__()
@@ -103,7 +103,8 @@ class ClassificationThread(QThread):
             # Emite sinal de progresso
             file_duration = len(y_test) / self.sr
             file_time = time.time() - start_time
-            self.processing_metrics.emit(file_time, file_duration)
+            file_size = os.path.getsize(file_path)
+            self.processing_metrics.emit(file_time, file_duration, file_size)
             self.progress.emit(index, total_files)
 
         # Emite sinal de finalização
