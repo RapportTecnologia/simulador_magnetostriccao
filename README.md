@@ -17,7 +17,7 @@ Este projeto implementa um sistema completo para simulação, análise e classif
 
 ## Requisitos
 
-- Python 3.8 ou superior
+- Python 3.8 a 3.10 (Windows 🪟), ou superior no Linux 🐧
 - Bibliotecas Python (ver seção de configuração)
 - Dispositivos de áudio para captura/reprodução (para uso em tempo real)
 
@@ -29,10 +29,10 @@ Este projeto implementa um sistema completo para simulação, análise e classif
 # Criar ambiente virtual
 python -m venv venv
 
-# Ativar ambiente no Linux/Mac
+# Ativar ambiente no Linux/Mac 🐧
 source venv/bin/activate
 
-# Ativar ambiente no Windows
+# Ativar ambiente no Windows 🪟
 venv\Scripts\activate
 ```
 
