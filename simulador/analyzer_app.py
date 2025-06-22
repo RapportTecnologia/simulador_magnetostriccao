@@ -389,8 +389,11 @@ class AnalyzerApp(QMainWindow):
             extent=[0, DURATION, freqs[0], freqs[-1]]
         )
         ax.set_ylim(0, CUTOFF_FREQ)
-        self.canvas_spec.draw()
-        QApplication.processEvents()
+        try:
+            self.canvas_spec.draw()
+            QApplication.processEvents()
+        except RuntimeError:
+            return
 
     def _update_mel_bands(self, mel_db):
         """
@@ -399,8 +402,11 @@ class AnalyzerApp(QMainWindow):
         self.fig_mel.clear()
         ax = self.fig_mel.add_subplot(111)
         ax.plot(mel_db)
-        self.canvas_mel.draw()
-        QApplication.processEvents()
+        try:
+            self.canvas_mel.draw()
+            QApplication.processEvents()
+        except RuntimeError:
+            return
 
     def _update_fft(self, freqs, magnitudes):
         """
@@ -410,8 +416,11 @@ class AnalyzerApp(QMainWindow):
         ax = self.fig_fft.add_subplot(111)
         ax.plot(freqs, magnitudes)
         ax.set_xlim(0, CUTOFF_FREQ)
-        self.canvas_fft.draw()
-        QApplication.processEvents()
+        try:
+            self.canvas_fft.draw()
+            QApplication.processEvents()
+        except RuntimeError:
+            return
 
     def _audio_callback(self, indata, outdata, frames, time_info, status):
         """
