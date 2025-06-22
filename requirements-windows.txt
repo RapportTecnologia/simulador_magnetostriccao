@@ -1,0 +1,9 @@
+numpy<2
+scipy
+librosa
+sounddevice
+PyQt5
+matplotlib
+tensorflow==2.10.0
+tqdm
+psutil

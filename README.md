@@ -43,6 +43,15 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+#### Instalação no Windows
+No Windows, devido à incompatibilidade de `tensorflow` e `numpy` com o Python 3.12, execute:
+
+```bash
+pip install -r requirements-windows.txt
+```
+
+Esse arquivo contém versões de TensorFlow e NumPy compatíveis com versões estáveis do Python no Windows, que não suportam as versões mais recentes (3.12).
+
 As dependências principais incluem:
 - **numpy**: Processamento numérico
 - **scipy**: Processamento de sinais (filtros, transformadas)
@@ -143,6 +152,10 @@ Para personalizar a geração de amostras:
 1. **Ruídos Externos**: Adicione arquivos de áudio WAV em `ruidos_externos/` (crie o diretório manualmente se não existir: `mkdir ruidos_externos`)
 2. **Respostas Impulsivas**: Adicione IRs de ambientes em `impulse_responses/`
 3. **Curvas de EQ**: Adicione perfis de equalização em `eq_curvas_microfone/`
+
+## Compatibilidade de Modelos
+
+Os arquivos de modelo `.h5` gerados em ambiente Linux (usando o `requirements.txt` com a versão atual das bibliotecas) não são compatíveis com aqueles gerados em ambiente Windows (usando `requirements-windows.txt`) na nova versão. Isso ocorre devido a diferenças na serialização do formato HDF5 e nas versões do TensorFlow e do NumPy entre as plataformas. Portanto, certifique-se de treinar e utilizar o modelo na mesma plataforma e ambiente em que ele foi gerado.
 
 ## Uso do Analisador
 
