@@ -581,6 +581,13 @@ class AnalyzerApp(QMainWindow):
             'Treinamento Concluído',
             f'Modelo salvo em: {model_file}'
         )
+        # Após confirmação, inicia análise/classificação pendentes
+        if getattr(self, 'pending_analyze', False):
+            self._toggle_analysis()
+            self.pending_analyze = False
+        if getattr(self, 'pending_classify', False):
+            self._toggle_classification()
+            self.pending_classify = False
 
     def _toggle_classification(self):
         """
