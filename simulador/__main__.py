@@ -1,3 +1,5 @@
+"""Ponto de entrada para a aplicação gráfica de análise de magnetostricção."""
+
 import sys
 import argparse
 import os

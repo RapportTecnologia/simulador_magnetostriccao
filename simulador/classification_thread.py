@@ -6,7 +6,19 @@ import scipy.signal
 import numpy as np
 
 
+"""Thread de classificação de arquivos de áudio."""
+
+
 class ClassificationThread(QThread):
+    """Executa classificação de forma assíncrona.
+
+    A thread percorre todos os arquivos recebidos, realiza o pré-processamento
+    (filtro, extração de espectrograma/MFCC e FFT) e, em seguida, envia os
+    resultados de inferência para a GUI através de sinais.  As métricas de
+    tempo de carregamento, pré-processamento e inferência são emitidas para
+    monitoramento de desempenho.
+    """
+
     progress = pyqtSignal(int, int)
     spec_ready = pyqtSignal(np.ndarray, np.ndarray)
     mel_ready = pyqtSignal(np.ndarray)
@@ -18,6 +30,27 @@ class ClassificationThread(QThread):
     detailed_metrics = pyqtSignal(float, float, float)
 
     def __init__(self, test_files, model, b, a, sr, duration, n_mfcc, fmax):
+        """Configura a thread de classificação.
+
+        Parâmetros
+        ----------
+        test_files : list[str]
+            Lista de caminhos para os arquivos de teste.
+        model : keras.Model
+            Modelo já carregado utilizado na inferência.
+        b, a : ndarray
+            Coeficientes do filtro Butterworth utilizado para pré-processar o
+            áudio.
+        sr : int
+            Taxa de amostragem dos arquivos.
+        duration : int or float
+            Duração máxima lida de cada arquivo (segundos).
+        n_mfcc : int
+            Número de coeficientes MFCC extraídos.
+        fmax : int
+            Frequência máxima considerada na análise.
+        """
+
         super().__init__()
         self.test_files = test_files
         self.model = model
@@ -30,6 +63,8 @@ class ClassificationThread(QThread):
         self._running = True
 
     def run(self):
+        """Processa cada arquivo de teste e envia resultados via sinais."""
+
         total_files = len(self.test_files)
         report_path = os.path.join('relatorio_classificacao.csv')
 
@@ -125,4 +160,6 @@ class ClassificationThread(QThread):
         self.finished.emit()
 
     def stop(self):
+        """Solicita o encerramento da thread."""
+
         self._running = False

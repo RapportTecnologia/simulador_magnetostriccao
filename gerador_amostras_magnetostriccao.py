@@ -1,3 +1,5 @@
+"""Gerador de amostras sintéticas de magnetostricção."""
+
 import os
 import numpy as np
 import random
@@ -18,6 +20,8 @@ DIR_IRS = "./impulse_responses"
 DIR_EQ_CURVES = "./eq_curvas_microfone"
 
 def gerar_sinal_base(label, sem_ruido=False):
+    """Gera sinal fundamental com harmônicas simulando magnetostricção."""
+
     base_freq = 60 + np.random.uniform(-2, 2)  # Pequena variação de frequência fundamental
     harmonicas = list(range(2, 16))
     sinal = np.zeros_like(t)
@@ -47,12 +51,16 @@ def gerar_sinal_base(label, sem_ruido=False):
     return sinal
 
 def carregar_audio_pydub(path):
+    """Carrega áudio usando pydub e converte para numpy."""
+
     audio = AudioSegment.from_file(path).set_channels(1).set_frame_rate(fs)
     arr = np.array(audio.get_array_of_samples()).astype(np.float32) / 32768.0
     dur = len(arr) / fs
     return arr, dur
 
 def aplicar_ruido_real(sinal, nivel_ruido=1.5):
+    """Combina o sinal base com um ruído externo real."""
+
     arquivos_ruido = glob(os.path.join(DIR_RUIDOS, "*.wav")) + glob(os.path.join(DIR_RUIDOS, "*.mp3"))
     if not arquivos_ruido:
         return sinal, "sem_ruido"
@@ -66,6 +74,8 @@ def aplicar_ruido_real(sinal, nivel_ruido=1.5):
     return sinal, os.path.splitext(os.path.basename(arquivo))[0]
 
 def aplicar_convolucao_IR(sinal):
+    """Aplica resposta impulsiva para simular ambiente."""
+
     arquivos_ir = glob(os.path.join(DIR_IRS, "*.wav"))
     if not arquivos_ir:
         return sinal
@@ -73,6 +83,8 @@ def aplicar_convolucao_IR(sinal):
     return fftconvolve(sinal, ir, mode='same')
 
 def aplicar_equalizacao(sinal):
+    """Aplica curva de equalização de microfone ao sinal."""
+
     arquivos_eq = glob(os.path.join(DIR_EQ_CURVES, "*.wav"))
     if not arquivos_eq:
         return sinal
@@ -81,6 +93,8 @@ def aplicar_equalizacao(sinal):
     return sinal * curva_eq
 
 def salvar_wav(sinal, path):
+    """Salva array numpy como arquivo WAV normalizado."""
+
     wav_data = np.int16(sinal / np.max(np.abs(sinal)) * 32767)
     sf.write(path, wav_data, fs)
 
@@ -123,6 +137,8 @@ def gerar_amostras_fatorial(destino, n_sinais=20, nivel_ruido=1.5):
 # Função original mantida para compatibilidade e geração padrão
 
 def gerar_amostras(destino, total, proporcao_treino, proporcao_ruido=0.3, nivel_ruido=1.5):
+    """Gera dataset de treino/teste com opção de ruído externo."""
+
     treino_dir = os.path.join(destino, "train")
     teste_dir = os.path.join(destino, "test")
     for d in [treino_dir, teste_dir]:
@@ -169,6 +185,8 @@ def gerar_amostras(destino, total, proporcao_treino, proporcao_ruido=0.3, nivel_
 # Exemplo: para 20 sinais por label e todos os ruídos em ./ruidos_externos
 # O diretório de saída será ./samples_fatorial
 def gerar_sinal_base_com_duracao(n_amostras, label=None):
+    """Versão de ``gerar_sinal_base`` que respeita um tamanho arbitrário."""
+
     base_freq = 60 + np.random.uniform(-2, 2)
     harmonicas = list(range(2, 16))
     t_local = np.linspace(0, n_amostras / fs, n_amostras, endpoint=False)
