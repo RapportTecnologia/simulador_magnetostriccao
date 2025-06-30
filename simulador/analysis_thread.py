@@ -1,3 +1,10 @@
+"""Rotina de análise de áudio em tempo real.
+
+Este módulo define uma QThread responsável por capturar som do microfone,
+processá-lo e emitir resultados intermediários (espectrograma, Mel bands, FFT
+e classificação) sem bloquear a interface gráfica.
+"""
+
 # analysis_thread.py - Thread para análise de arquivos de áudio
 import time
 
@@ -32,10 +39,23 @@ class FileAnalysisThread(QThread):
     class_ready = pyqtSignal(int)
 
     def __init__(self, b, a, sr, duration, model, max_time):
-        super().__init__()
+        """Inicializa a thread de análise de áudio.
 
-        # Lista de caminhos para arquivos de teste
-        # Não armazena lista de arquivos, usa entrada de áudio ao vivo
+        Parameters
+        ----------
+        b, a : ndarray
+            Coeficientes do filtro Butterworth usado no pré-processamento.
+        sr : int
+            Taxa de amostragem utilizada na captura.
+        duration : float
+            Duração máxima de cada captura em segundos.
+        model : keras.Model
+            Modelo carregado responsável pela classificação.
+        max_time : int
+            Número de quadros esperados pelo modelo (eixo temporal dos MFCCs).
+        """
+
+        super().__init__()
 
         # Coeficientes do filtro passa-baixo (Butterworth)
         self.b = b

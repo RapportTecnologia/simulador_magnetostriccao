@@ -1,3 +1,5 @@
+"""Ferramenta para converter modelos Keras para formatos TinyML."""
+
 import argparse
 import os
 import sys
@@ -9,6 +11,8 @@ except ImportError:
     np = None
 
 def convert_h5_to_tflite(h5_path, tflite_path):
+    """Converte arquivo ``.h5`` em modelo TFLite."""
+
     model = tf.keras.models.load_model(h5_path)
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
     tflite_model = converter.convert()
@@ -16,7 +20,9 @@ def convert_h5_to_tflite(h5_path, tflite_path):
         f.write(tflite_model)
     print(f"TFLite model saved to {tflite_path}")
 
-def tflite_to_c_array(tflite_path, c_path, var_name="model_tflite"): 
+def tflite_to_c_array(tflite_path, c_path, var_name="model_tflite"):
+    """Converte arquivo TFLite em array C para uso em microcontroladores."""
+
     with open(tflite_path, "rb") as f:
         tflite_bytes = f.read()
     with open(c_path, "w") as f:
@@ -32,6 +38,8 @@ def tflite_to_c_array(tflite_path, c_path, var_name="model_tflite"):
     print(f"C array saved to {c_path}")
 
 def main():
+    """Função principal do script de conversão."""
+
     parser = argparse.ArgumentParser(description="Converte arquivo .h5 para formato STM32 TinyML (TFLite e C array)")
     parser.add_argument("input_h5", help="Caminho para o arquivo .h5 do modelo treinado")
     parser.add_argument("--tflite", help="Caminho de saída do arquivo .tflite", default=None)

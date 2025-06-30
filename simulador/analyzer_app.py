@@ -1040,7 +1040,11 @@ class AnalyzerApp(QMainWindow):
 
 
 class StatsDialog(QDialog):
+    """Janela para exibição detalhada de métricas de processamento."""
+
     def __init__(self, parent, current_stats, proposed_metrics):
+        """Constrói o diálogo com estatísticas atuais e propostas."""
+
         super().__init__(parent)
         self.setWindowTitle('Detalhes de Estatísticas')
         layout = QVBoxLayout(self)
