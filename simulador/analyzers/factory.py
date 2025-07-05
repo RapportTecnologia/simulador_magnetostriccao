@@ -1,6 +1,20 @@
-import numpy as np
-from .fft_analyzer import FFTAnalyzer
-from .prony_analyzer import PronyAnalyzer
+import pkgutil
+import importlib
+import os
+import inspect
+
+# Dynamically discover all analyzer classes in this package
+_analyzers = {}
+_analyzer_dir = os.path.dirname(__file__)
+for _, module_name, _ in pkgutil.iter_modules([_analyzer_dir]):
+    if module_name.endswith('_analyzer'):
+        module = importlib.import_module(f"{__package__}.{module_name}")
+        for attr in dir(module):
+            if attr.endswith('Analyzer'):
+                clazz = getattr(module, attr)
+                if isinstance(clazz, type):
+                    method = attr[:-len('Analyzer')].lower()
+                    _analyzers[method] = clazz
 
 class AnalyzerFactory:
     """
@@ -9,24 +23,14 @@ class AnalyzerFactory:
     @staticmethod
     def create(method, sr, cutoff_freq, order=None):
         method = method.lower()
-        if method == 'fft':
-            return FFTAnalyzer(sr, cutoff_freq)
-        elif method == 'prony':
-            k = order if order is not None else 10
-            return PronyAnalyzer(k, sr, cutoff_freq)
-        elif method == 'music':
-            class MusicAnalyzer:
-                def __init__(self, sr, cutoff):
-                    pass
-                def analyze(self, signal):
-                    return np.array([]), np.array([])
-            return MusicAnalyzer(sr, cutoff_freq)
-        elif method == 'esprit':
-            class EspritAnalyzer:
-                def __init__(self, sr, cutoff):
-                    pass
-                def analyze(self, signal):
-                    return np.array([]), np.array([])
-            return EspritAnalyzer(sr, cutoff_freq)
-        else:
+        if method not in _analyzers:
             raise ValueError(f"Unknown analysis method: {method}")
+        clazz = _analyzers[method]
+        # Inspect constructor signature to pass order if needed
+        sig = inspect.signature(clazz.__init__)
+        params = list(sig.parameters.keys())
+        if 'order' in params:
+            k = order if order is not None else 10
+            return clazz(k, sr, cutoff_freq)
+        else:
+            return clazz(sr, cutoff_freq)

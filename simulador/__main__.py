@@ -1,6 +1,7 @@
 import sys
 import argparse
 import os
+import pkgutil
 import numpy as np
 import scipy.signal
 import librosa
@@ -84,10 +85,13 @@ if __name__ == "__main__":
         action='store_true',
         help='Ativa ou desativa o uso da GPU, o default é desativado',
     )
+    # Descobre métodos de análise dinamicamente com base em módulos no diretório analyzers
+    analyzer_dir = os.path.join(os.path.dirname(__file__), 'analyzers')
+    methods = [name[:-len('_analyzer')] for _, name, _ in pkgutil.iter_modules([analyzer_dir]) if name.endswith('_analyzer')]
     parser.add_argument(
         '-a', '--analysis-method',
-        choices=['fft', 'prony', 'music', 'esprit'],
-        default='fft',
+        choices=methods,
+        default=methods[0] if methods else None,
         help='Método de análise de frequências a usar'
     )
     args = parser.parse_args()
