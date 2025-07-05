@@ -7,6 +7,7 @@ import librosa
 import sounddevice as sd
 
 from PyQt5.QtCore import QThread, pyqtSignal
+from .analyzers.factory import AnalyzerFactory
 
 # Constants duplicated from main application for analysis
 CUTOFF_FREQ = 1000
@@ -31,7 +32,7 @@ class FileAnalysisThread(QThread):
     # Sinal para classe prevista: código_da_classe
     class_ready = pyqtSignal(int)
 
-    def __init__(self, b, a, sr, duration, model, max_time):
+    def __init__(self, b, a, sr, duration, model, max_time, analysis_method='fft', analysis_order=None):
         super().__init__()
 
         # Lista de caminhos para arquivos de teste
@@ -53,6 +54,8 @@ class FileAnalysisThread(QThread):
         # Modelo e tempo máximo de quadros
         self.model = model
         self.max_time = max_time
+        self.analysis_method = analysis_method
+        self.analysis_order = analysis_order
 
     def run(self):
         """
@@ -79,11 +82,10 @@ class FileAnalysisThread(QThread):
             mel_db = librosa.power_to_db(M).mean(axis=1)
             self.mel_ready.emit(mel_db)
 
-            # 3) FFT
-            F = np.abs(np.fft.rfft(filtered))
-            freqs_fft = np.fft.rfftfreq(len(filtered), 1 / self.sr)
-            mask_fft = freqs_fft <= CUTOFF_FREQ
-            self.fft_ready.emit(freqs_fft[mask_fft], F[mask_fft])
+            # 3) Análise de frequências via método selecionado
+            analyzer = AnalyzerFactory.create(self.analysis_method, self.sr, CUTOFF_FREQ, order=self.analysis_order)
+            freqs_an, mags_an = analyzer.analyze(filtered)
+            self.fft_ready.emit(freqs_an, mags_an)
 
             # 4) Classificação
             mfccs = librosa.feature.mfcc(y=filtered, sr=self.sr, n_mfcc=N_MFCC, fmax=CUTOFF_FREQ)

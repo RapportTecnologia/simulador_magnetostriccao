@@ -73,7 +73,8 @@ class AnalyzerApp(QMainWindow):
         self,
         train_dir,
         test_dir,
-        model_path
+        model_path,
+        analysis_method='fft'
     ):
         super().__init__()
 
@@ -83,6 +84,8 @@ class AnalyzerApp(QMainWindow):
 
         # Caminho para o modelo .h5
         self.model_path = model_path
+        self.analysis_method = analysis_method
+        self.analysis_order = None
 
         # Variável para armazenar o modelo carregado/treinado
         self.model = None
@@ -356,7 +359,9 @@ class AnalyzerApp(QMainWindow):
             SR,
             DURATION,
             self.model,
-            self.model.input_shape[2]
+            self.model.input_shape[2],
+            self.analysis_method,
+            self.analysis_order
         )
 
         # Conecta sinais para atualizar UI
