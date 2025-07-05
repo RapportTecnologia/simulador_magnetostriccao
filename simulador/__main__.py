@@ -85,11 +85,6 @@ if __name__ == "__main__":
         action='store_true',
         help='Inicia classificação de arquivos de teste; requer modelo existente'
     )
-    parser.add_argument(
-        '--no_gpu',
-        action='store_true',
-        help='Ativa ou desativa o uso da GPU, o default é desativado',
-    )
     # Descobre métodos de análise dinamicamente com base em módulos no diretório analyzers
     analyzer_dir = os.path.join(os.path.dirname(__file__), 'analyzers')
     methods = [name[:-len('_analyzer')] for _, name, _ in pkgutil.iter_modules([analyzer_dir]) if name.endswith('_analyzer')]
