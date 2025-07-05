@@ -62,6 +62,22 @@ As dependências principais incluem:
 - **tensorflow**: Aprendizado de máquina para classificação
 - **tqdm**: Barra de progresso para geração de amostras
 
+## Alguns parametros extras que podem ajudar.
+
+export XLA_FLAGS="--xla_gpu_cuda_data_dir=/usr/lib/nvidia-cuda-toolkit --xla_gpu_cuda_compiler_path=$(which nvcc)"
+
+### desabilitar o JIT/XLA e treinar na GPU sem XLA, pode usar:
+
+export TF_XLA_FLAGS="--tf_xla_enable_xla_devices=false"
+
+## Desativa o uso da CPU
+
+```
+export CUDA_VISIBLE_DEVICES = -1
+```
+
+No aplicativo basta usar --no_gpu
+
 ## Estrutura do Projeto
 
 ```
