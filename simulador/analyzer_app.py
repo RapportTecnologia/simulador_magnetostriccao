@@ -259,7 +259,7 @@ class AnalyzerApp(QMainWindow):
 
         # Rótulo para exibir modelo atual
         current_model = self.lst_models.currentItem().text()
-        self.lbl_model = QLabel(f'Modelo: {current_model}', alignment=Qt.AlignCenter)
+        self.lbl_model = QLabel(f'Modelo: {current_model} | Análise: {self.analysis_method}', alignment=Qt.AlignCenter)
         disp_layout.addWidget(self.lbl_model)
         # Inicializa labels de estatísticas
         self.lbl_time_stats = QLabel('Tempo total: 0.00s | Tempo médio: 0.00s/s', alignment=Qt.AlignCenter)
@@ -457,7 +457,7 @@ class AnalyzerApp(QMainWindow):
         self.btn_classify.setEnabled(False)
         # Atualiza rótulo de modelo
         selected_model = self.lst_models.item(index).text()
-        self.lbl_model.setText(f'Modelo: {selected_model}')
+        self.lbl_model.setText(f'Modelo: {selected_model} | Análise: {self.analysis_method}')
 
     def _collect_data(self, directory):
         """
