@@ -74,6 +74,11 @@ if __name__ == "__main__":
         help='Inicia análise de arquivos de teste; requer modelo existente'
     )
     parser.add_argument(
+        '--no_gpu',
+        action='store_true',
+        help='Ativa ou desativa o uso da GPU, o default é desativado',
+    )
+    parser.add_argument(
         '--classify',
         action='store_true',
         help='Inicia classificação de arquivos de teste; requer modelo existente'
@@ -82,6 +87,9 @@ if __name__ == "__main__":
 
     root_dir = args.root_dir
     model_path = args.model
+
+    if args.no_gpu:
+        os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
     if args.analyze and args.classify:
         parser.error('As flags --analyze e --classify não podem ser usadas juntas')
